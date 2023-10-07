@@ -1,3 +1,2 @@
 # weed-seg
 Implementation of weed segmentation and stem detection...
-Hello World!
