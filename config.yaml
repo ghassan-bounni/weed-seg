@@ -1,0 +1,60 @@
+model:
+  name: "CustomModel"
+  n_classes: 10
+  input_size: [3, 28, 28]
+  summary: true
+
+  layers:
+    - name: "linear1"
+      type: "Linear"
+      in_features: 784
+      out_features: 256
+
+    - name: "relu1"
+      type: "ReLU"
+
+    - name: "dropout1"
+      type: "Dropout"
+      p: 0.5
+
+    - name: "linear2"
+      type: "Linear"
+      in_features: 256
+      out_features: 10
+
+  hyperparameters:
+    learning_rate: 0.001
+    batch_size: 64
+    num_epochs: 10
+    optimizer: "Adam"
+    loss_fn: "CrossEntropyLoss"
+
+data:
+  train:
+    path: "data/train/"
+    transforms:
+      - RandomRotation:
+          degrees: 10
+      - RandomAffine:
+          degrees: 10
+          translate: [0.1, 0.1]
+          scale: [0.9, 1.1]
+          shear: 10
+      - ToTensor: null
+      - Normalize:
+          mean: 0.5
+          std: 0.5
+  valid:
+    path: "data/valid/"
+    transforms:
+      - ToTensor: null
+      - Normalize:
+          mean: 0.5
+          std: 0.5
+  test:
+    path: "data/test/"
+    transforms:
+      - ToTensor: null
+      - Normalize:
+          mean: 0.5
+          std: 0.5
