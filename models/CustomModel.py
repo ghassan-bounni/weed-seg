@@ -62,9 +62,7 @@ class CustomModel(nn.Module):
 
                 self.layer_names.append(layer_name)
 
-                self.layers.append(
-                    getattr(nn, layer_type)(**layer_config if layer_config else {})
-                )
+                self.layers.append(getattr(nn, layer_type)(**layer_config))
             else:
                 raise ValueError(f"Layer type {layer_type} is not in torch.nn module.")
 

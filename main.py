@@ -1,5 +1,6 @@
 from configs.base import load_config
 from utils.utils import parse_args
+from logger import setup_logging
 from train import train
 from eval import test
 
@@ -11,14 +12,24 @@ if __name__ == "__main__":
     model_config = config["model"]
     data_config = config["data"]
 
+    logger = setup_logging(output=args.log)
+
     if args.mode == "train":
-        train(model_config, data_config, args.device, verbose=args.verbose)
-    elif args.task == "eval":
+        train(
+            model_config,
+            data_config,
+            args.checkpoint,
+            args.device,
+            logger,
+            verbose=args.verbose,
+        )
+    elif args.mode == "eval":
         test(
             model_config,
             data_config,
             args.checkpoint,
             args.device,
+            logger,
             verbose=args.verbose,
         )
     else:

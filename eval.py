@@ -1,10 +1,12 @@
 import torch
 from torch.utils.data import DataLoader
+from torchvision.datasets import MNIST
+
 from data.dataset import CustomObjectDetectionDataset
 from data.augmentations import create_transforms
 
 from tqdm import tqdm
-from utils.logger import LOGGER
+import logging
 from utils.utils import load_model, load_criterion
 
 
@@ -13,6 +15,7 @@ def test(
     data_config: dict,
     checkpoint_path: str,
     device: torch.device,
+    logger: logging.Logger = logging.getLogger(__name__),
     verbose: bool = False,
 ):
     """
@@ -32,6 +35,9 @@ def test(
     device : torch.device
         The device to run the training on.
 
+    logger : logging.Logger
+        The logger to use.
+
     verbose : bool
         Whether to print the logs or not.
     """
@@ -47,15 +53,25 @@ def test(
     criterion = load_criterion(loss_fn=model.args["loss_fn"])
 
     test_transforms = create_transforms(data_config["test"]["transforms"])
-    test_dataset = CustomObjectDetectionDataset(
-        data_config["test"]["path"], "yolo", test_transforms
+    # test_dataset = CustomObjectDetectionDataset(
+    #     data_config["test"]["path"], "yolo", test_transforms
+    # )
+
+    test_dataset = MNIST(
+        data_config["test"]["path"],
+        train=False,
+        download=True,
+        transform=test_transforms,
     )
     test_dataloader = DataLoader(test_dataset, batch_size=model.args["batch_size"])
 
-    LOGGER.info("Starting evaluation...")
+    if verbose:
+        logger.info("Starting evaluation...")
 
     model.eval()
     with torch.inference_mode():
+        accuracy = 0
+
         with tqdm(test_dataloader, ncols=100, unit="batch") as pbar:
             for batch_idx, (inputs, targets) in enumerate(pbar):
                 # Move the data to the device
@@ -70,9 +86,12 @@ def test(
 
                 # TODO: Add metrics
 
+                accuracy += (output.argmax(1) == targets).float().mean()
                 # Update the progress bar
                 pbar.set_postfix(
                     {"batch": batch_idx, "loss": loss.item()}, refresh=True
                 )
-
-                # TODO: Add logging
+        accuracy /= len(test_dataloader)
+        if verbose:
+            logger.info(f"Accuracy: {accuracy}")
+        # TODO: Add logging
