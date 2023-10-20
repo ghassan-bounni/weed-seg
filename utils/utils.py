@@ -35,50 +35,23 @@ def parse_args():
     return args
 
 
-def model_info(model: nn.Module, detailed: bool = False) -> tuple:
+def model_info(model, detailed=False):
     """
     Model information.
-
-    Parameters
-    ----------
-    model : nn.Module
-        The model to get the information from.
-
-    detailed : bool, optional
-        Whether to print detailed information (defaults to False).
-
-    Returns
-    ----------
-    tuple
-        The number of layers, parameters, and gradients.
     """
-
     n_p = get_num_params(model)  # number of parameters
     n_g = get_num_gradients(model)  # number of gradients
-    n_l = len(list(model.layers))  # number of layers
-
+    n_l = len(list(model.modules()))  # number of layers
     if detailed:
-        # Get the maximum length of the layer names and the layers for formatting
-        max_name_len = max(len(name) for name in model.layer_names)
-        max_layer_len = max(len(str(layer)) for layer in model.layers)
-        total_len = max_name_len + max_layer_len + 7
-
-        # Log network layers
-        LOGGER.info("-" * total_len)
-        LOGGER.info(f"| {'name':>{max_name_len}} | {'layer':>{max_layer_len}} |")
-        LOGGER.info("-" * total_len)
-        for layer, name in zip(model.layers, model.layer_names):
-            LOGGER.info(f"| {name:>{max_name_len}} | {str(layer):>{max_layer_len}} |")
-        LOGGER.info("-" * total_len)
-
-        # Log detailed information
+        max_len = max(map(lambda x: len(x[0]), list(model.named_parameters())))
         LOGGER.info(
-            f"{'layer':>5} {'name':>{max_name_len+10}} {'gradient':>9} {'parameters':>12} {'shape':>20} {'mu':>10} {'std':>10} {'dtype':>15}"
+            f"{'layer':>5} {'name':>{max_len}}"
+            f"{'gradient':>9} {'parameters':>12} {'shape':>20} "
+            f"{'mu':>10} {'sigma':>10}"
         )
+        formatting = f"%5g %{max_len}s %9s %12g %20s %10.3g %10.3g %10s"
         for i, (name, p) in enumerate(model.named_parameters()):
             name = name.replace("module_list.", "")
-            name = f"{model.layer_names[int(name.split('.')[1])]}.{name.split('.')[-1]}"
-            formatting = f"%5s %{max_name_len+10}s %9s %12g %20s %10.3g %10.3g %15s"
             LOGGER.info(
                 formatting
                 % (
@@ -93,13 +66,12 @@ def model_info(model: nn.Module, detailed: bool = False) -> tuple:
                 )
             )
 
-    model_name = getattr(model, "name", "Model")
-
-    # Log the summary
-    LOGGER.info(
-        f"{model_name} summary: {n_l} layers, {n_p} parameters, {n_g} gradients"
+    LOGGER.info(f"summary: {n_l} layers, {n_p} parameters, {n_g} gradients")
+    return (
+        n_l,
+        n_p,
+        n_g,
     )
-    return n_l, n_p, n_g
 
 
 def get_num_params(model):
@@ -208,14 +180,16 @@ def load_criterion(loss_fn: str, **kwargs) -> nn.Module:
 # Adapted from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/tal.py
 def xywh2xyxy(x):
     """
-    Convert bounding box coordinates from (x, y, width, height) format to (x1, y1, x2, y2) format where (x1, y1) is the
-    top-left corner and (x2, y2) is the bottom-right corner.
+    Convert bounding box coordinates from (x, y, width, height) format to (x1, y1, x2, y2) format
+    where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
 
     Args:
-        x (np.ndarray | torch.Tensor): The input bounding box coordinates in (x, y, width, height) format.
+        x (np.ndarray | torch.Tensor):
+            The input bounding box coordinates in (x, y, width, height) format.
 
     Returns:
-        y (np.ndarray | torch.Tensor): The bounding box coordinates in (x1, y1, x2, y2) format.
+        y (np.ndarray | torch.Tensor):
+            The bounding box coordinates in (x1, y1, x2, y2) format.
     """
     assert (
         x.shape[-1] == 4
