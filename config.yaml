@@ -1,85 +1,32 @@
 model:
-  name: "CustomModel"
-  n_classes: 10
-  input_size: [1, 28, 28]
-  summary: true
-
-  layers:
-    - name: "conv1"
-      type: "Conv2d"
-      in_channels: 1
-      out_channels: 32
-      kernel_size: 3
-      stride: 1
-      padding: 1
-
-    - name: "pool1"
-      type: "MaxPool2d"
-      kernel_size: 2
-      stride: 2
-
-    - name: "conv2"
-      type: "Conv2d"
-      in_channels: 32
-      out_channels: 64
-      kernel_size: 3
-      stride: 1
-      padding: 1
-
-    - name: "pool2"
-      type: "MaxPool2d"
-      kernel_size: 2
-      stride: 2
-
-    - name: "flatten"
-      type: "Flatten"
-
-    - name: "linear1"
-      type: "Linear"
-      in_features: 3136
-      out_features: 128
-
-    - name: "relu1"
-      type: "ReLU"
-
-    - name: "linear2"
-      type: "Linear"
-      in_features: 128
-      out_features: 10
-
-  hyperparameters:
-    learning_rate: 0.001
-    batch_size: 64
-    num_epochs: 10
-    optimizer: "Adam"
-    loss_fn: "CrossEntropyLoss"
+  num_init_features: 32
+  num_layers: 3
+  block_depth: 3
+  growth_rate: 4
+  drop_rate: 0.2
+  kernel_size: 3
+  conv_mode: "full"
 
 data:
-  train:
-    path: "data/train/"
-    transforms:
-      - RandomRotation:
-          degrees: 10
-      - RandomAffine:
-          degrees: 10
-          translate: [0.1, 0.1]
-          scale: [0.9, 1.1]
-          shear: 10
-      - ToTensor: null
-      - Normalize:
-          mean: 0.5
-          std: 0.5
-  valid:
-    path: "data/valid/"
-    transforms:
-      - ToTensor: null
-      - Normalize:
-          mean: 0.5
-          std: 0.5
-  test:
-    path: "data/test/"
-    transforms:
-      - ToTensor: null
-      - Normalize:
-          mean: 0.5
-          std: 0.5
+  path: "data/"
+  image_size: [384, 512]
+  in_channels: 3
+  out_channels: 3
+  
+train:
+  epochs: 200
+  batch_size: 16
+  warmup_epochs: 3
+  weight_decay: 0.01
+  lr: 0.001
+  lr_decay: 0.1
+  lr_step: 1
+  lr_scheduler: "poly"
+  clip_grad: 1.0
+  transforms:
+    - ToTensor: null
+    - Normalize:
+        mean: 0.5
+        std: 0.5
+
+
