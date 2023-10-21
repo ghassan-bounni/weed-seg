@@ -1,3 +1,4 @@
+import logging
 import os.path
 from typing import Iterator
 
@@ -9,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from utils.logger import LOGGER
+logger = logging.getLogger("StemDetectionLogger")
 
 
 def parse_args():
@@ -44,7 +45,7 @@ def model_info(model, detailed=False):
     n_l = len(list(model.modules()))  # number of layers
     if detailed:
         max_len = max(map(lambda x: len(x[0]), list(model.named_parameters())))
-        LOGGER.info(
+        logger.info(
             f"{'layer':>5} {'name':>{max_len}}"
             f"{'gradient':>9} {'parameters':>12} {'shape':>20} "
             f"{'mu':>10} {'sigma':>10}"
@@ -52,7 +53,7 @@ def model_info(model, detailed=False):
         formatting = f"%5g %{max_len}s %9s %12g %20s %10.3g %10.3g %10s"
         for i, (name, p) in enumerate(model.named_parameters()):
             name = name.replace("module_list.", "")
-            LOGGER.info(
+            logger.info(
                 formatting
                 % (
                     i,
@@ -66,7 +67,7 @@ def model_info(model, detailed=False):
                 )
             )
 
-    LOGGER.info(f"summary: {n_l} layers, {n_p} parameters, {n_g} gradients")
+    logger.info(f"summary: {n_l} layers, {n_p} parameters, {n_g} gradients")
     return (
         n_l,
         n_p,
@@ -82,41 +83,6 @@ def get_num_params(model):
 def get_num_gradients(model):
     """Return the total number of parameters with gradients in a model."""
     return sum(x.numel() for x in model.parameters() if x.requires_grad)
-
-
-def load_model(
-    cfg: dict,
-    show_info: bool = True,
-) -> nn.Module:
-    """
-    Loads a model based on the configuration.
-
-    Parameters
-    ----------
-    cfg : dict
-        The configuration of the model.
-
-    show_info : bool, optional
-        Whether to show the model info or not (default is True).
-
-    Returns
-    -------
-    nn.Module
-        The model.
-    """
-
-    model_name = cfg["name"]
-
-    if os.path.exists(f"models/{model_name}.py"):
-        module = import_module(f"models.{model_name}")
-        model = getattr(module, model_name)(cfg)
-
-        if show_info:
-            model_info(model, detailed=cfg["summary"])
-
-        return model
-    else:
-        raise ValueError(f"{model_name} is not found in models")
 
 
 def load_optimizer(
@@ -174,6 +140,59 @@ def load_criterion(loss_fn: str, **kwargs) -> nn.Module:
             return getattr(loss_module, loss_fn)(**kwargs)
         else:
             raise ValueError(f"{loss_fn} is not found in torch.nn or utils.loss")
+
+
+def load_checkpoint(
+    mode: str,
+    model: nn.Module,
+    optimizer: optim.Optimizer = None,
+    checkpoint_name: str = None,
+):
+    """
+    Loads a selected checkpoint if it exists or checks for the latest checkpoint.\n
+    If no checkpoint exists, starts from epoch 0.
+    """
+
+    checkpoint_path = (
+        "checkpoints/checkpoint_latest.pth"
+        if checkpoint_name is None
+        else f"checkpoints/{checkpoint_name}"
+    )
+
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        start_epoch = checkpoint["epoch"]
+        model.load_state_dict(checkpoint["model_state_dict"])
+
+        if mode == "train":
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+        logger.info(f"Loaded checkpoint: {checkpoint_path} (epoch {start_epoch})")
+        return start_epoch
+
+    else:
+        if checkpoint_name:
+            raise ValueError(f"Checkpoint: {checkpoint_name} not found.")
+        else:
+            logger.info("No checkpoint found. Starting from epoch 0.")
+            return 0
+
+
+def save_checkpoint(epoch, model_state, optimizer_state, save_interval):
+    """
+    Saves epoch number, model state, and optimizer state to a checkpoint.
+    """
+
+    checkpoint = {
+        "epoch": epoch,
+        "model_state_dict": model_state,
+        "optimizer_state_dict": optimizer_state,
+    }
+    torch.save(checkpoint, "checkpoints/checkpoint_latest.pth")
+
+    if epoch % save_interval == 0:
+        checkpoint_name = f"checkpoints/checkpoint_{epoch}.pth"
+        torch.save(checkpoint, checkpoint_name)
 
 
 # TODO: utility functions and classes from ultralytics
