@@ -8,6 +8,29 @@ from utils.metrics import bbox_iou
 from utils.utils import bbox2dist, select_candidates_in_gts, select_highest_overlaps
 
 
+class JaccardLoss(nn.Module):
+    """
+    Jaccard loss for segmentation.\n
+    It calculates the jaccard_index (IOU) between the predicted and target masks
+    and then returns 1 - jaccard_index.
+
+    Attributes
+    ----------
+    smooth : float
+        Smoothing factor to avoid division by zero.
+    """
+
+    def __init__(self, smooth=1.0):
+        super(JaccardLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, y_pred, y_true):
+        intersection = torch.sum(y_true * y_pred)
+        union = torch.sum(y_true) + torch.sum(y_pred) - intersection
+        jaccard_index = (intersection + self.smooth) / (union + self.smooth)
+        return 1 - jaccard_index
+
+
 class BboxLoss(nn.Module):
     """Criterion class for computing training losses during training."""
 
