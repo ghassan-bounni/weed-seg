@@ -77,7 +77,7 @@ def setup_logging(
     name: Optional[str] = None,
     level: int = logging.DEBUG,
     capture_warnings: bool = True,
-) -> logging.Logger:
+) -> None:
     """
     Setup logging.
 
@@ -91,4 +91,4 @@ def setup_logging(
         capture_warnings: Whether warnings should be captured as logs.
     """
     logging.captureWarnings(capture_warnings)
-    return _configure_logger(name, level=level, output=output)
+    _configure_logger(name, level=level, output=output)
