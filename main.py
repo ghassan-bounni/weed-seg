@@ -1,5 +1,6 @@
-from configs.base import load_config
 from utils.utils import parse_args
+from configs.base import load_config
+import logging
 from logger import setup_logging
 from train import train
 from eval import test
@@ -12,25 +13,15 @@ if __name__ == "__main__":
     model_config = config["model"]
     data_config = config["data"]
 
-    logger = setup_logging(output=args.log)
+    logger = logging.Logger(name="StemDetectionLogger")
+
+    setup_logging(name="StemDetectionLogger", output=args.output)
 
     if args.mode == "train":
-        train(
-            model_config,
-            data_config,
-            args.checkpoint,
-            args.device,
-            logger,
-            verbose=args.verbose,
-        )
+        train_config = config["train"]
+        train(model_config, data_config, train_config, args.checkpoint)
     elif args.mode == "eval":
-        test(
-            model_config,
-            data_config,
-            args.checkpoint,
-            args.device,
-            logger,
-            verbose=args.verbose,
-        )
+        test_config = config["test"]
+        test(model_config, test_config, args.checkpoint)
     else:
         raise ValueError(f"Task {args.task} not recognized.")
