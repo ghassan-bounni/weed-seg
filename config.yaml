@@ -1,4 +1,6 @@
 model:
+  in_channels: 3
+  out_channels: 3
   num_init_features: 32
   num_layers: 3
   block_depth: 3
@@ -7,13 +9,9 @@ model:
   kernel_size: 3
   conv_mode: "full"
 
-data:
-  path: "data/"
-  image_size: [384, 512]
-  in_channels: 3
-  out_channels: 3
-  
+
 train:
+  path: "data/train/"
   epochs: 200
   batch_size: 16
   warmup_epochs: 3
@@ -23,10 +21,27 @@ train:
   lr_step: 1
   lr_scheduler: "poly"
   clip_grad: 1.0
+  loss_fn: "JaccardLoss"
   transforms:
     - ToTensor: null
     - Normalize:
         mean: 0.5
         std: 0.5
 
+valid:
+    path: "data/valid/"
+    batch_size: 16
+    transforms:
+        - ToTensor: null
+        - Normalize:
+            mean: 0.5
+            std: 0.5
 
+test:
+    path: "data/test/"
+    batch_size: 16
+    transforms:
+        - ToTensor: null
+        - Normalize:
+            mean: 0.5
+            std: 0.5
