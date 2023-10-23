@@ -1,144 +1,87 @@
-import numpy as np
 import torch
-import matplotlib.pyplot as plt
-from torchvision.datasets import MNIST
-from torch.utils.data import DataLoader
-from data.dataset import CustomObjectDetectionDataset
-from data.augmentations import create_transforms
+from torch.nn.utils import clip_grad_norm_
+from torch.optim.lr_scheduler import LambdaLR, StepLR
 
-from tqdm import tqdm
+from models.base import BaseModel
+from data.dataset import create_dataloader
+
 import logging
-from utils.utils import load_model, load_optimizer, load_criterion
+from utils.utils import load_criterion, load_checkpoint, save_checkpoint
 
 
 def train(
     model_config: dict,
-    data_config: dict,
-    checkpoint_path: str = None,
-    device: torch.device = "cpu",
-    logger: logging.Logger = logging.getLogger(__name__),
-    verbose: bool = False,
+    train_config: dict,
+    save_interval: int,
+    checkpoint_name: str = None,
 ) -> None:
-    """
-    Trains the model.
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger = logging.getLogger("StemDetectionLogger")
 
-    Parameters
-    ----------
-    model_config : dict
-        The model configuration.
+    (
+        train_datapath,
+        epochs,
+        batch_size,
+        warmup_epochs,
+        weight_decay,
+        lr,
+        lr_decay,
+        lr_step,
+        lr_scheduler,
+        clip_grad,
+        loss_fn,
+        train_transforms,
+    ) = train_config.values()
 
-    data_config : dict
-        The data configuration.
+    train_dataloader = create_dataloader(train_datapath, train_transforms, batch_size)
 
-    checkpoint_path : str
-        The path to the checkpoint to load.
-
-    device : torch.device
-        The device to run the training on.
-
-    logger : logging.Logger
-        The logger to use.
-
-    verbose : bool
-        Whether to print the logs or not.
-    """
-
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() and device == "cuda" else "cpu"
-    )
-
-    model = load_model(cfg=model_config)
-    if checkpoint_path is not None:
-        model.load_state_dict(torch.load(checkpoint_path))
-
+    model = BaseModel(**model_config)
     model.to(device)
 
-    optimizer = load_optimizer(
-        optimizer_name=model.args["optimizer"],
-        model_params=model.parameters(),
-        lr=model.args["learning_rate"],
+    optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay)
+    criterion = load_criterion(loss_fn)
+
+    start_epoch = load_checkpoint("train", model, optimizer, checkpoint_name)
+
+    scheduler = (
+        LambdaLR(optimizer, lambda e: (1 - e / epochs) ** lr_decay)
+        if (lr_scheduler == "poly")
+        else StepLR(optimizer, step_size=lr_step, gamma=lr_decay)
     )
 
-    criterion = load_criterion(loss_fn=model.args["loss_fn"])
+    for epoch in range(start_epoch, epochs):
+        model.train()
 
-    train_transforms = create_transforms(data_config["train"]["transforms"])
-    # train_dataset = CustomObjectDetectionDataset(
-    #     data_config["train"]["path"], "yolo", train_transforms
-    # )
+        running_loss = 0.0
+        for batch_idx, (inputs, labels) in enumerate(train_dataloader):
+            inputs = inputs.to(device)
+            labels = labels.to(device)
 
-    train_dataset = MNIST(
-        root=data_config["train"]["path"],
-        train=True,
-        download=True,
-        transform=train_transforms,
-    )
+            output = model(inputs)
+            loss = criterion(output, labels)
+            optimizer.zero_grad()
+            loss.backward()
 
-    train_dataloader = DataLoader(
-        train_dataset, batch_size=model.args["batch_size"], shuffle=True
-    )
+            if clip_grad is not None:
+                clip_grad_norm_(model.parameters(), clip_grad)
 
-    # valid_transforms = create_transforms(data_config["valid"]["transforms"])
-    # valid_dataset = CustomObjectDetectionDataset(
-    #     data_config["valid"]["path"], "yolo", valid_transforms
-    # )
-    # valid_dataloader = DataLoader(valid_dataset, batch_size=model.args["batch_size"])
+            optimizer.step()
 
-    if verbose:
-        logger.info("Starting training...")
+            running_loss += loss.item()
 
-    model.train()
-    for epoch in range(model.args["num_epochs"]):
-        with tqdm(
-            train_dataloader, ncols=100, desc=f"Epoch {epoch+1}", unit="batch"
-        ) as pbar:
-            for batch_idx, (inputs, targets) in enumerate(pbar):
-                # Move the data to the device
-                inputs = inputs.to(device)
-                targets = targets.to(device)
+        train_loss = running_loss / len(train_dataloader)
 
-                # Forward pass
-                output = model(inputs)
+        # Gradual warm-up: Adjust learning rate for warm-up epochs
+        if epoch < warmup_epochs:
+            warmup_factor = epoch / warmup_epochs
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = param_group["initial_lr"] * warmup_factor
+        # Update the learning rate after warm-up
+        else:
+            scheduler.step()
 
-                # Calculate the loss
-                loss = criterion(output, targets)
+        logger.info(f"Epoch {epoch + 1}/{epochs}, Loss: {train_loss:.4f}")
 
-                # Backward pass
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                # TODO: Add metrics
-
-                # Update the progress bar
-                pbar.set_postfix(
-                    {"batch": batch_idx, "loss": loss.item()}, refresh=True
-                )
-
-                # TODO: Add logging
-
-            # Save the model
-            if epoch % 5 == 0:
-                torch.save(
-                    model.state_dict(),
-                    f"checkpoints/model_{epoch}.pt",
-                )
-
-    # model.eval()  # Set the model to evaluation mode
-    # valid_loss = 0.0
-    # with torch.no_grad():
-    #     for batch_idx, (valid_inputs, valid_targets) in enumerate(
-    #         valid_dataloader
-    #     ):
-    #         valid_inputs = valid_inputs.to(device)
-    #         valid_targets = valid_targets.to(device)
-    #
-    #         valid_output = model(valid_inputs)
-    #         valid_loss += criterion(valid_output, valid_targets).item()
-    #
-    #         # TODO: Calculate and record validation metrics (e.g., accuracy, etc.)
-    #
-    # valid_loss /= len(valid_dataloader)
-    # if verbose:
-    #   logger.info(f"Validation loss after epoch {epoch+1}: {valid_loss}")
-    #
-    # model.train()  # Set the model back to training mode
+        save_checkpoint(
+            epoch, model.state_dict(), optimizer.state_dict(), save_interval
+        )

@@ -1,97 +1,53 @@
 import torch
-from torch.utils.data import DataLoader
-from torchvision.datasets import MNIST
 
-from data.dataset import CustomObjectDetectionDataset
-from data.augmentations import create_transforms
+from models.base import BaseModel
+from data.dataset import create_dataloader
 
-from tqdm import tqdm
 import logging
-from utils.utils import load_model, load_criterion
+from utils.utils import load_criterion, load_checkpoint
 
 
 def test(
     model_config: dict,
-    data_config: dict,
-    checkpoint_path: str,
-    device: torch.device,
-    logger: logging.Logger = logging.getLogger(__name__),
-    verbose: bool = False,
+    test_config: dict,
+    checkpoint_name: str,
 ):
     """
     Evaluates the model.
-
-    Parameters
-    ----------
-    model_config : dict
-        The model configuration.
-
-    data_config : dict
-        The data configuration.
-
-    checkpoint_path : str
-        The path to the model checkpoint.
-
-    device : torch.device
-        The device to run the training on.
-
-    logger : logging.Logger
-        The logger to use.
-
-    verbose : bool
-        Whether to print the logs or not.
     """
 
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() and device == "cuda" else "cpu"
-    )
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger = logging.getLogger("StemDetectionLogger")
 
-    model = load_model(cfg=model_config)
-    model.load_state_dict(torch.load(checkpoint_path))
+    (
+        eval_datapath,
+        batch_size,
+        loss_fn,
+        eval_transforms,
+    ) = test_config.values()
+
+    eval_dataloader = create_dataloader(eval_datapath, eval_transforms, batch_size)
+
+    model = BaseModel(**model_config)
     model.to(device)
 
-    criterion = load_criterion(loss_fn=model.args["loss_fn"])
+    criterion = load_criterion(loss_fn)
 
-    test_transforms = create_transforms(data_config["test"]["transforms"])
-    # test_dataset = CustomObjectDetectionDataset(
-    #     data_config["test"]["path"], "yolo", test_transforms
-    # )
-
-    test_dataset = MNIST(
-        data_config["test"]["path"],
-        train=False,
-        download=True,
-        transform=test_transforms,
-    )
-    test_dataloader = DataLoader(test_dataset, batch_size=model.args["batch_size"])
-
-    if verbose:
-        logger.info("Starting evaluation...")
+    load_checkpoint("eval", model, checkpoint_name=checkpoint_name)
 
     model.eval()
     with torch.inference_mode():
         accuracy = 0
+        for batch_idx, (inputs, targets) in enumerate(eval_dataloader):
+            inputs = inputs.to(device)
+            targets = targets.to(device)
 
-        with tqdm(test_dataloader, ncols=100, unit="batch") as pbar:
-            for batch_idx, (inputs, targets) in enumerate(pbar):
-                # Move the data to the device
-                inputs = inputs.to(device)
-                targets = targets.to(device)
+            output = model(inputs)
 
-                # Forward pass
-                output = model(inputs)
+            loss = criterion(output, targets)
+            logger.info(f"loss: {loss}")
 
-                # Calculate the loss
-                loss = criterion(output, targets)
+            accuracy += (output.argmax(1) == targets).float().mean()
 
-                # TODO: Add metrics
-
-                accuracy += (output.argmax(1) == targets).float().mean()
-                # Update the progress bar
-                pbar.set_postfix(
-                    {"batch": batch_idx, "loss": loss.item()}, refresh=True
-                )
-        accuracy /= len(test_dataloader)
-        if verbose:
-            logger.info(f"Accuracy: {accuracy}")
-        # TODO: Add logging
+        accuracy /= len(eval_dataloader)
+        logger.info(f"Accuracy: {accuracy}")
