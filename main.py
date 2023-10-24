@@ -22,6 +22,6 @@ if __name__ == "__main__":
         train(model_config, data_config, train_config, args.checkpoint)
     elif args.mode == "eval":
         test_config = config["test"]
-        test(model_config, test_config, args.checkpoint)
+        test(model_config, test_config, args.checkpoint, args.output)
     else:
         raise ValueError(f"Task {args.task} not recognized.")

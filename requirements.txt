@@ -6,3 +6,4 @@ pillow
 matplotlib
 pyyaml
 black
+opencv-python

@@ -1,9 +1,12 @@
-import logging
-import os.path
 from typing import Iterator
 
-import numpy as np
+import os
+import json
+import logging
 import argparse
+
+import cv2
+import numpy as np
 from importlib import import_module
 
 import torch
@@ -193,6 +196,41 @@ def save_checkpoint(epoch, model_state, optimizer_state, save_interval):
     if epoch % save_interval == 0:
         checkpoint_name = f"checkpoints/checkpoint_{epoch}.pth"
         torch.save(checkpoint, checkpoint_name)
+
+
+def get_stem_coordinates(
+    predictions: torch.Tensor, num_classes: int, img_ids: list
+) -> list:
+    stem_coordinates = []
+
+    # getting stem coordinates per class for each image in the predictions tensor
+    for image_idx, image_argmax in enumerate(predictions):
+        image_id = img_ids[image_idx]
+
+        # skipping the background class (class_id = 0)
+        for class_id in range(1, num_classes):
+            binary_mask = (image_argmax == class_id).cpu().numpy().astype(np.uint8)
+            _, _, _, centroids = cv2.connectedComponentsWithStats(
+                binary_mask, connectivity=8
+            )
+            stem_coordinates[class_id] = {
+                "file_name": image_id,
+                "stems": centroids[1:].tolist(),
+            }
+
+    return stem_coordinates
+
+
+def save_data_to_json(data, file_name: str, output_dir: str):
+    """
+    Saves data to a json file.
+    """
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    with open(os.path.join(output_dir, file_name), "w") as f:
+        json.dump(data, f)
 
 
 # TODO: utility functions and classes from ultralytics

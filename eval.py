@@ -4,13 +4,19 @@ from models.base import BaseModel
 from data.dataset import create_dataloader
 
 import logging
-from utils.utils import load_criterion, load_checkpoint
+from utils.utils import (
+    load_criterion,
+    load_checkpoint,
+    get_stem_coordinates,
+    save_data_to_json,
+)
 
 
 def test(
     model_config: dict,
     test_config: dict,
     checkpoint_name: str,
+    output_dir: str,
 ):
     """
     Evaluates the model.
@@ -38,7 +44,8 @@ def test(
     model.eval()
     with torch.inference_mode():
         accuracy = 0
-        for batch_idx, (inputs, targets) in enumerate(eval_dataloader):
+        stem_data = {"results": []}
+        for batch_idx, (inputs, targets, img_ids) in enumerate(eval_dataloader):
             inputs = inputs.to(device)
             targets = targets.to(device)
 
@@ -47,7 +54,18 @@ def test(
             loss = criterion(output, targets)
             logger.info(f"loss: {loss}")
 
-            accuracy += (output.argmax(1) == targets).float().mean()
+            # getting the class with the highest probability per pixel in each image
+            output_argmax = output.argmax(1)
+
+            accuracy += (output_argmax == targets).float().mean()
+
+            # contains the coordinates of the stems in each image
+            stem_coordinates = get_stem_coordinates(
+                output_argmax, output.shape[1], img_ids
+            )
+            stem_data["results"].extend(stem_coordinates)
+
+        save_data_to_json(stem_data, "stem_data.json", output_dir)
 
         accuracy /= len(eval_dataloader)
         logger.info(f"Accuracy: {accuracy}")

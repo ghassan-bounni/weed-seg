@@ -58,8 +58,8 @@ class StemDetectionDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, idx):
-        img_name = os.path.join(self.images_dir, self.images[idx])
-        image = Image.open(img_name)
+        img_path = self.images[idx]
+        image = Image.open(img_path)
 
         masks = [
             Image.open(os.path.join(self.masks[idx], mask))
@@ -69,7 +69,7 @@ class StemDetectionDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, masks
+        return image, masks, img_path.split("/")[-1].split(".")[0]
 
 
 def create_dataloader(data_path, transforms_dict, batch_size):
