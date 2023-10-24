@@ -32,7 +32,9 @@ def test(
         eval_transforms,
     ) = test_config.values()
 
-    eval_dataloader = create_dataloader(eval_datapath, eval_transforms, batch_size)
+    eval_dataloader = create_dataloader(
+        eval_datapath, eval_transforms, batch_size, False
+    )
 
     model = BaseModel(**model_config)
     model.to(device)

@@ -1,3 +1,5 @@
+import os
+
 import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import LambdaLR, StepLR
@@ -13,10 +15,18 @@ def train(
     model_config: dict,
     train_config: dict,
     save_interval: int,
+    seed: int,
     checkpoint_name: str = None,
 ) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger = logging.getLogger("StemDetectionLogger")
+
+    if seed is not None:
+        seed = seed
+        torch.manual_seed(seed)
+
+        if device == "cuda":
+            torch.cuda.manual_seed(seed)
 
     (
         train_datapath,
@@ -33,7 +43,9 @@ def train(
         train_transforms,
     ) = train_config.values()
 
-    train_dataloader = create_dataloader(train_datapath, train_transforms, batch_size)
+    train_dataloader = create_dataloader(
+        train_datapath, train_transforms, batch_size, True
+    )
 
     model = BaseModel(**model_config)
     model.to(device)

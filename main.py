@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     if args.mode == "train":
         train_config = config["train"]
-        train(model_config, data_config, train_config, args.checkpoint)
+        train(model_config, data_config, train_config, args.seed, args.checkpoint)
     elif args.mode == "eval":
         test_config = config["test"]
         test(model_config, test_config, args.checkpoint, args.output)

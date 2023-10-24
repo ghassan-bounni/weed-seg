@@ -72,8 +72,8 @@ class StemDetectionDataset(Dataset):
         return image, masks, img_path.split("/")[-1].split(".")[0]
 
 
-def create_dataloader(data_path, transforms_dict, batch_size):
+def create_dataloader(data_path, transforms_dict, batch_size, shuffle):
     transforms = create_transforms(transforms_dict)
     train_dataset = StemDetectionDataset(data_path, transforms)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
     return train_dataloader
