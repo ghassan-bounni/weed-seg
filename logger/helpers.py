@@ -7,7 +7,7 @@ import time
 import torch
 
 
-logger = logging.getLogger("Weed-Det")
+logger = logging.getLogger("StemDetectionLogger")
 
 
 class MetricLogger(object):

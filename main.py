@@ -11,7 +11,6 @@ if __name__ == "__main__":
     config = load_config(args.config)
 
     model_config = config["model"]
-    data_config = config["data"]
 
     logger = logging.Logger(name="StemDetectionLogger")
 
@@ -19,7 +18,14 @@ if __name__ == "__main__":
 
     if args.mode == "train":
         train_config = config["train"]
-        train(model_config, data_config, train_config, args.seed, args.checkpoint)
+        val_config = config["val"]
+        train(
+            model_config,
+            train_config,
+            val_config,
+            args.seed,
+            args.checkpoint,
+        )
     elif args.mode == "eval":
         test_config = config["test"]
         test(model_config, test_config, args.checkpoint, args.output)

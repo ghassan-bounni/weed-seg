@@ -1,25 +1,23 @@
-import os
-
 import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import LambdaLR, StepLR
 
+from logger import MetricLogger
 from models.base import BaseModel
 from data.dataset import create_dataloader
 
-import logging
 from utils.utils import load_criterion, load_checkpoint, save_checkpoint
 
 
 def train(
     model_config: dict,
     train_config: dict,
+    val_config: dict,
     save_interval: int,
     seed: int,
     checkpoint_name: str = None,
 ) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger = logging.getLogger("StemDetectionLogger")
 
     if seed is not None:
         seed = seed
@@ -43,8 +41,14 @@ def train(
         train_transforms,
     ) = train_config.values()
 
+    val_datapath, val_batch_size, val_transforms = val_config.values()
+
     train_dataloader = create_dataloader(
         train_datapath, train_transforms, batch_size, True
+    )
+
+    val_dataloader = create_dataloader(
+        val_datapath, val_transforms, val_batch_size, False
     )
 
     model = BaseModel(**model_config)
@@ -61,7 +65,11 @@ def train(
         else StepLR(optimizer, step_size=lr_step, gamma=lr_decay)
     )
 
-    for epoch in range(start_epoch, epochs):
+    metric_logger = MetricLogger(delimiter=" ")
+
+    for epoch in metric_logger.log_every(
+        range(start_epoch, epochs), print_freq=1, header="Train:"
+    ):
         model.train()
 
         running_loss = 0.0
@@ -83,6 +91,21 @@ def train(
 
         train_loss = running_loss / len(train_dataloader)
 
+        metric_logger.update(loss=train_loss)
+
+        model.eval()
+        val_loss = 0.0
+        for val_batch_idx, (val_inputs, val_labels) in enumerate(val_dataloader):
+            val_inputs = val_inputs.to(device)
+            val_labels = val_labels.to(device)
+
+            with torch.no_grad():
+                val_output = model(val_inputs)
+                val_loss += criterion(val_output, val_labels).item()
+
+        val_loss /= len(val_dataloader)
+        metric_logger.update(val_loss=val_loss)
+
         # Gradual warm-up: Adjust learning rate for warm-up epochs
         if epoch < warmup_epochs:
             warmup_factor = epoch / warmup_epochs
@@ -91,8 +114,6 @@ def train(
         # Update the learning rate after warm-up
         else:
             scheduler.step()
-
-        logger.info(f"Epoch {epoch + 1}/{epochs}, Loss: {train_loss:.4f}")
 
         save_checkpoint(
             epoch, model.state_dict(), optimizer.state_dict(), save_interval

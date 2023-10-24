@@ -28,7 +28,7 @@ train:
         mean: 0.5
         std: 0.5
 
-valid:
+val:
     path: "data/valid/"
     batch_size: 16
     transforms:
