@@ -34,6 +34,9 @@ def parse_args():
         "--output", default="output", help="Path to the output directory."
     )
     parser.add_argument("--seed", default=42, help="Seed for reproducibility.")
+    parser.add_argument(
+        "--save-interval", default=1, help="Checkpoint save interval (epochs)."
+    )
 
     args = parser.parse_args()
     return args
@@ -164,14 +167,14 @@ def load_checkpoint(
 
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
-        start_epoch = checkpoint["epoch"]
+        epoch = checkpoint["epoch"]
         model.load_state_dict(checkpoint["model_state_dict"])
 
         if mode == "train":
             optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-        logger.info(f"Loaded checkpoint: {checkpoint_path} (epoch {start_epoch})")
-        return start_epoch
+        logger.info(f"Loaded checkpoint: {checkpoint_path} (epoch {epoch})")
+        return epoch + 1
 
     else:
         if checkpoint_name:

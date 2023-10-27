@@ -3,7 +3,7 @@ from PIL import Image
 
 from torch.utils.data import Dataset, DataLoader
 
-import torchvision.transforms
+from torchvision import transforms
 from data.augmentations import create_transforms
 
 
@@ -19,8 +19,11 @@ class StemDetectionDataset(Dataset):
     masks_dir : str
         The path to the masks directory.
 
-    transform : callable
+    image_transform : callable
         The transformation function to apply to the images.
+
+    mask_transform : callable
+        The transformation function to apply to the mask.
 
     images : list
         The list of image names.
@@ -30,7 +33,10 @@ class StemDetectionDataset(Dataset):
     """
 
     def __init__(
-        self, data_dir: str, transform: torchvision.transforms.Compose = None
+        self,
+        data_dir: str,
+        image_transform: transforms.Compose = None,
+        mask_transform: transforms.Compose = None,
     ) -> None:
         """
         Initializes the dataset.
@@ -40,7 +46,10 @@ class StemDetectionDataset(Dataset):
         data_dir : str
             The path to the data directory.
 
-        transform : torchvision.transforms.Compose, optional
+        image_transform : torchvision.transforms.Compose, optional
+            The transformation function to apply to the images.
+
+        mask_transform : torchvision.transforms.Compose, optional
             The transformation function to apply to the images.
         """
         self.images_dir = os.path.join(data_dir, "images")
@@ -52,7 +61,8 @@ class StemDetectionDataset(Dataset):
         self.masks = [
             os.path.join(self.masks_dir, masks) for masks in os.listdir(self.masks_dir)
         ]
-        self.transform = transform
+        self.image_transform = image_transform
+        self.mask_transform = mask_transform
 
     def __len__(self):
         return len(self.images)
@@ -61,19 +71,27 @@ class StemDetectionDataset(Dataset):
         img_path = self.images[idx]
         image = Image.open(img_path)
 
-        masks = [
-            Image.open(os.path.join(self.masks[idx], mask))
-            for mask in os.listdir(self.masks[idx])
-        ]
+        masks = (
+            [
+                Image.open(os.path.join(self.masks[idx], mask))
+                for mask in os.listdir(self.masks[idx])
+            ]
+            if os.path.isdir(self.masks[idx])
+            else Image.open(self.masks[idx])
+        )
 
-        if self.transform:
-            image = self.transform(image)
+        if self.image_transform:
+            image = self.image_transform(image)
+
+        if self.mask_transform:
+            masks = self.mask_transform(masks)
 
         return image, masks, img_path.split("/")[-1].split(".")[0]
 
 
 def create_dataloader(data_path, transforms_dict, batch_size, shuffle):
-    transforms = create_transforms(transforms_dict)
-    train_dataset = StemDetectionDataset(data_path, transforms)
+    image_transforms = create_transforms(transforms_dict["image_transforms"])
+    mask_transforms = create_transforms(transforms_dict["mask_transforms"])
+    train_dataset = StemDetectionDataset(data_path, image_transforms, mask_transforms)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
     return train_dataloader

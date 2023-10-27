@@ -54,7 +54,7 @@ def train(
     model = BaseModel(**model_config)
     model.to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
     criterion = load_criterion(loss_fn)
 
     start_epoch = load_checkpoint("train", model, optimizer, checkpoint_name)
@@ -67,54 +67,60 @@ def train(
 
     metric_logger = MetricLogger(delimiter=" ")
 
-    for epoch in metric_logger.log_every(
-        range(start_epoch, epochs), print_freq=1, header="Train:"
+    total_iterations = epochs * len(train_dataloader)
+    start_iteration = start_epoch * len(train_dataloader)
+
+    for batch_idx, (inputs, labels, img_ids) in metric_logger.log_every(
+        enumerate(train_dataloader),
+        print_freq=1,
+        header="Train:",
+        n_iterations=total_iterations,
+        start_iteration=start_iteration,
     ):
         model.train()
+        epoch = batch_idx // len(train_dataloader) + start_epoch
 
-        running_loss = 0.0
-        for batch_idx, (inputs, labels) in enumerate(train_dataloader):
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+        inputs = inputs.to(device)
+        labels = labels.to(device)
 
-            output = model(inputs)
-            loss = criterion(output, labels)
-            optimizer.zero_grad()
-            loss.backward()
+        output = model(inputs)
+        loss = criterion(output, labels)
 
-            if clip_grad is not None:
-                clip_grad_norm_(model.parameters(), clip_grad)
+        optimizer.zero_grad()
+        loss.backward()
 
-            optimizer.step()
+        if clip_grad is not None:
+            clip_grad_norm_(model.parameters(), clip_grad)
 
-            running_loss += loss.item()
+        optimizer.step()
 
-        train_loss = running_loss / len(train_dataloader)
+        metric_logger.update(loss=loss.item())
 
-        metric_logger.update(loss=train_loss)
+        if batch_idx + 1 % len(train_dataloader) == 0:
+            model.eval()
+            val_loss = 0.0
+            for val_batch_idx, (val_inputs, val_labels, val_img_ids) in enumerate(
+                val_dataloader
+            ):
+                val_inputs = val_inputs.to(device)
+                val_labels = val_labels.to(device)
 
-        model.eval()
-        val_loss = 0.0
-        for val_batch_idx, (val_inputs, val_labels) in enumerate(val_dataloader):
-            val_inputs = val_inputs.to(device)
-            val_labels = val_labels.to(device)
+                with torch.no_grad():
+                    val_output = model(val_inputs)
+                    val_loss += criterion(val_output, val_labels).item()
 
-            with torch.no_grad():
-                val_output = model(val_inputs)
-                val_loss += criterion(val_output, val_labels).item()
+            val_loss /= len(val_dataloader)
+            metric_logger.update(val_loss=val_loss)
 
-        val_loss /= len(val_dataloader)
-        metric_logger.update(val_loss=val_loss)
+            # Gradual warm-up: Adjust learning rate for warm-up epochs
+            if epoch < warmup_epochs:
+                warmup_factor = epoch / warmup_epochs
+                for param_group in optimizer.param_groups:
+                    param_group["lr"] = param_group["initial_lr"] * warmup_factor
+            # Update the learning rate after warm-up
+            else:
+                scheduler.step()
 
-        # Gradual warm-up: Adjust learning rate for warm-up epochs
-        if epoch < warmup_epochs:
-            warmup_factor = epoch / warmup_epochs
-            for param_group in optimizer.param_groups:
-                param_group["lr"] = param_group["initial_lr"] * warmup_factor
-        # Update the learning rate after warm-up
-        else:
-            scheduler.step()
-
-        save_checkpoint(
-            epoch, model.state_dict(), optimizer.state_dict(), save_interval
-        )
+            save_checkpoint(
+                epoch, model.state_dict(), optimizer.state_dict(), save_interval
+            )

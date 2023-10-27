@@ -1,6 +1,5 @@
 from utils.utils import parse_args
 from configs.base import load_config
-import logging
 from logger import setup_logging
 from train import train
 from eval import test
@@ -12,8 +11,6 @@ if __name__ == "__main__":
 
     model_config = config["model"]
 
-    logger = logging.Logger(name="StemDetectionLogger")
-
     setup_logging(name="StemDetectionLogger", output=args.output)
 
     if args.mode == "train":
@@ -23,6 +20,7 @@ if __name__ == "__main__":
             model_config,
             train_config,
             val_config,
+            args.save_interval,
             args.seed,
             args.checkpoint,
         )
