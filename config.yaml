@@ -1,6 +1,6 @@
 model:
   in_channels: 3
-  out_channels: 3
+  out_channels: 1
   num_init_features: 32
   num_layers: 3
   block_depth: 3
@@ -11,37 +11,67 @@ model:
 
 
 train:
-  path: "data/train/"
+  path: "/data/train"
   epochs: 200
-  batch_size: 16
+  batch_size: 3
   warmup_epochs: 3
   weight_decay: 0.01
   lr: 0.001
   lr_decay: 0.1
   lr_step: 1
   lr_scheduler: "poly"
-  clip_grad: 1.0
+  clip_grad: null
   loss_fn: "JaccardLoss"
   transforms:
-    - ToTensor: null
-    - Normalize:
-        mean: 0.5
-        std: 0.5
+    image_transforms:
+      - Resize:
+          size: [384, 512]
+      - GaussianBlur:
+          kernel_size: 5
+          sigma: 1.0
+      - ToTensor: null
+      - Normalize:
+          mean: [0.0, 0.0, 0.0]
+          std: [1.0, 1.0, 1.0]
+    mask_transforms:
+      - Resize:
+          size: [384, 512]
+      - ToTensor: null
 
 val:
-    path: "data/valid/"
-    batch_size: 16
+    path: "/data/val"
+    batch_size: 3
     transforms:
+      image_transforms:
+          - Resize:
+              size: [384, 512]
+          - GaussianBlur:
+              kernel_size: 5
+              sigma: 1.0
+          - ToTensor: null
+          - Normalize:
+              mean: [0.0, 0.0, 0.0]
+              std: [1.0, 1.0, 1.0]
+      mask_transforms:
+        - Resize:
+            size: [384, 512]
         - ToTensor: null
-        - Normalize:
-            mean: 0.5
-            std: 0.5
 
 test:
-    path: "data/test/"
-    batch_size: 16
+    path: "/data/test"
+    batch_size: 3
     transforms:
+      image_transforms:
+          - Resize:
+              size: [384, 512]
+          - GaussianBlur:
+              kernel_size: 5
+              sigma: 1.0
+          - ToTensor: null
+          - Normalize:
+              mean: [0.0, 0.0, 0.0]
+              std: [1.0, 1.0, 1.0]
+      mask_transforms:
+        - Resize:
+            size: [384, 512]
         - ToTensor: null
-        - Normalize:
-            mean: 0.5
-            std: 0.5
