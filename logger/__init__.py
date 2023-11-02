@@ -38,12 +38,10 @@ def _configure_logger(
     logger.propagate = False
 
     # Loosely match Google glog format:
-    #   [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+    #   [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line msg
     # but use a shorter timestamp and include the logger name:
-    #   [IWEF]yyyymmdd hh:mm:ss logger threadid file:line] msg
-    fmt_prefix = (
-        "%(levelname).1s%(asctime)s %(process)s %(name)s %(filename)s:%(lineno)s] "
-    )
+    #   [IWEF]yyyymmdd hh:mm:ss logger msg
+    fmt_prefix = "%(levelname).1s%(asctime)s "
     fmt_message = "%(message)s"
     fmt = fmt_prefix + fmt_message
     datefmt = "%Y%m%d %H:%M:%S"

@@ -30,9 +30,7 @@ def parse_args():
     parser.add_argument(
         "--checkpoint", default=None, help="Path to the checkpoint file."
     )
-    parser.add_argument(
-        "--output", default="output", help="Path to the output directory."
-    )
+    parser.add_argument("--output", default=None, help="Path to the output directory.")
     parser.add_argument("--seed", default=42, help="Seed for reproducibility.")
     parser.add_argument(
         "--save-interval", default=1, help="Checkpoint save interval (epochs)."
@@ -40,55 +38,6 @@ def parse_args():
 
     args = parser.parse_args()
     return args
-
-
-def model_info(model, detailed=False):
-    """
-    Model information.
-    """
-    n_p = get_num_params(model)  # number of parameters
-    n_g = get_num_gradients(model)  # number of gradients
-    n_l = len(list(model.modules()))  # number of layers
-    if detailed:
-        max_len = max(map(lambda x: len(x[0]), list(model.named_parameters())))
-        logger.info(
-            f"{'layer':>5} {'name':>{max_len}}"
-            f"{'gradient':>9} {'parameters':>12} {'shape':>20} "
-            f"{'mu':>10} {'sigma':>10}"
-        )
-        formatting = f"%5g %{max_len}s %9s %12g %20s %10.3g %10.3g %10s"
-        for i, (name, p) in enumerate(model.named_parameters()):
-            name = name.replace("module_list.", "")
-            logger.info(
-                formatting
-                % (
-                    i,
-                    name,
-                    p.requires_grad,
-                    p.numel(),
-                    list(p.shape),
-                    p.mean(),
-                    p.std(),
-                    p.dtype,
-                )
-            )
-
-    logger.info(f"summary: {n_l} layers, {n_p} parameters, {n_g} gradients")
-    return (
-        n_l,
-        n_p,
-        n_g,
-    )
-
-
-def get_num_params(model):
-    """Return the total number of parameters in a model."""
-    return sum(x.numel() for x in model.parameters())
-
-
-def get_num_gradients(model):
-    """Return the total number of parameters with gradients in a model."""
-    return sum(x.numel() for x in model.parameters() if x.requires_grad)
 
 
 def load_optimizer(

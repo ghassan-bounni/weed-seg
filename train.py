@@ -1,6 +1,7 @@
 import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import LambdaLR, StepLR
+from torchinfo import summary
 
 from logger import MetricLogger
 from models.base import BaseModel
@@ -17,7 +18,7 @@ def train(
     seed: int,
     checkpoint_name: str = None,
 ) -> None:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     if seed is not None:
         seed = seed
@@ -27,7 +28,6 @@ def train(
             torch.cuda.manual_seed(seed)
 
     (
-        train_datapath,
         epochs,
         batch_size,
         warmup_epochs,
@@ -41,14 +41,14 @@ def train(
         train_transforms,
     ) = train_config.values()
 
-    val_datapath, val_batch_size, val_transforms = val_config.values()
+    val_batch_size, val_transforms = val_config.values()
 
     train_dataloader = create_dataloader(
-        train_datapath, train_transforms, batch_size, True
+        "data/train/", train_transforms, batch_size, True
     )
 
     val_dataloader = create_dataloader(
-        val_datapath, val_transforms, val_batch_size, False
+        "data/val/", val_transforms, val_batch_size, False
     )
 
     model = BaseModel(**model_config)
@@ -58,6 +58,7 @@ def train(
     criterion = load_criterion(loss_fn)
 
     start_epoch = load_checkpoint("train", model, optimizer, checkpoint_name)
+    summary(model, input_size=(batch_size, train_dataloader.dataset[0][0].shape))
 
     scheduler = (
         LambdaLR(optimizer, lambda e: (1 - e / epochs) ** lr_decay)

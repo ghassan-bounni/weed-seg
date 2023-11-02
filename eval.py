@@ -1,4 +1,5 @@
 import torch
+from torchinfo import summary
 
 from models.base import BaseModel
 from data.dataset import create_dataloader
@@ -22,18 +23,17 @@ def test(
     Evaluates the model.
     """
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     logger = logging.getLogger("StemDetectionLogger")
 
     (
-        eval_datapath,
         batch_size,
         loss_fn,
         eval_transforms,
     ) = test_config.values()
 
     eval_dataloader = create_dataloader(
-        eval_datapath, eval_transforms, batch_size, False
+        "data/test/", eval_transforms, batch_size, False
     )
 
     model = BaseModel(**model_config)
@@ -42,6 +42,7 @@ def test(
     criterion = load_criterion(loss_fn)
 
     load_checkpoint("eval", model, checkpoint_name=checkpoint_name)
+    summary(model, input_size=(batch_size, *eval_dataloader.dataset[0][0].shape))
 
     model.eval()
     with torch.inference_mode():

@@ -1,6 +1,7 @@
 torch
 torchvision
 torchaudio
+torchinfo
 tqdm
 pillow
 matplotlib
