@@ -230,6 +230,7 @@ class Encoder(nn.Module):
         kernel_size,
         bn_size,
         growth_rate,
+        exp_factor,
         drop_rate,
         conv_mode,
         **kwargs
@@ -245,7 +246,7 @@ class Encoder(nn.Module):
         num_features = num_init_features
         for i in range(num_layers):
             block = DenseBlock(
-                num_layers=block_depth,
+                num_layers=block_depth * (exp_factor**i),
                 num_input_features=num_features,
                 kernel_size=kernel_size,
                 bn_size=bn_size,
@@ -258,9 +259,9 @@ class Encoder(nn.Module):
             self.features.add_module("denseblock%d" % (i + 1), block)
 
             num_features = (
-                num_features + block_depth * growth_rate
+                num_features + block_depth * (exp_factor**i) * growth_rate
                 if i != num_layers - 1
-                else block_depth * growth_rate
+                else block_depth * (exp_factor**i) * growth_rate
             )
             self.out_channels.append(num_features)
 
@@ -330,6 +331,7 @@ class Decoder(nn.Module):
         skip_channels,
         block_depth,
         growth_rate,
+        exp_factor,
         drop_rate,
         conv_mode,
         **kwargs
@@ -364,9 +366,9 @@ class Decoder(nn.Module):
             self.features.add_module(
                 "decoderblock%d" % (i + 1),
                 DecoderBlock(
-                    in_channels,
+                    in_channels // (exp_factor**i),
                     skip_channels[i],
-                    block_depth,
+                    block_depth * (exp_factor ** (len(skip_channels) - (i + 1))),
                     growth_rate,
                     drop_rate,
                     conv_mode=conv_mode,

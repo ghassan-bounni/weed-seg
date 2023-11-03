@@ -135,6 +135,7 @@ model:
   num_layers: 3
   block_depth: 3
   growth_rate: 4
+  exp_factor: 2
   drop_rate: 0.2
   kernel_size: 3
   conv_mode: "full"

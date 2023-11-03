@@ -15,6 +15,7 @@ class BaseModel(nn.Module):
         num_init_features,
         out_channels,
         growth_rate,
+        exp_factor,
         drop_rate,
         num_layers,
         block_depth,
@@ -29,6 +30,7 @@ class BaseModel(nn.Module):
         self.num_init_features = num_init_features
         self.out_channels = out_channels
         self.growth_rate = growth_rate
+        self.exp_factor = exp_factor
         self.drop_rate = drop_rate
         self.num_layers = num_layers
         self.block_depth = block_depth
@@ -66,6 +68,7 @@ class BaseModel(nn.Module):
             kernel_size=self.kernel_size,
             bn_size=2,
             growth_rate=self.growth_rate,
+            exp_factor=self.exp_factor,
             drop_rate=self.drop_rate,
             conv_mode=self.conv_mode,
             **self.kwargs
@@ -77,6 +80,7 @@ class BaseModel(nn.Module):
             skip_channels=self.encoder.out_channels[::-1][1:],
             block_depth=self.block_depth,
             growth_rate=self.growth_rate,
+            exp_factor=self.exp_factor,
             drop_rate=self.drop_rate,
             conv_mode=self.conv_mode,
             **self.kwargs
@@ -86,7 +90,8 @@ class BaseModel(nn.Module):
     def build_head(self):
         return nn.Sequential(
             ConvNormAct(
-                in_channels=self.encoder.out_channels[-1],
+                in_channels=self.encoder.out_channels[-1]
+                // (self.exp_factor**self.num_layers),
                 out_channels=self.num_init_features,
                 kernel_size=self.kernel_size,
                 stride=1,
