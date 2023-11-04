@@ -1,0 +1,75 @@
+model:
+  in_channels: 3
+  out_channels: 1
+  num_init_features: 32
+  num_layers: 3
+  block_depth: 3
+  growth_rate: 4
+  exp_factor: 2
+  drop_rate: 0.2
+  kernel_size: 3
+  conv_mode: "full"
+
+
+train:
+  epochs: 200
+  batch_size: 3
+  warmup_epochs: 3
+  weight_decay: 0.01
+  lr: 0.001
+  lr_decay: 0.1
+  lr_step: 1
+  lr_scheduler: "poly"
+  clip_grad: null
+  loss_fn: "JaccardLoss"
+  transforms:
+    image_transforms:
+      - Resize:
+          size: [384, 512]
+      - GaussianBlur:
+          kernel_size: 5
+          sigma: 1.0
+      - ToTensor: null
+      - Normalize:
+          mean: [0.0, 0.0, 0.0]
+          std: [1.0, 1.0, 1.0]
+    mask_transforms:
+      - Resize:
+          size: [384, 512]
+      - ToTensor: null
+
+val:
+    batch_size: 3
+    transforms:
+      image_transforms:
+          - Resize:
+              size: [384, 512]
+          - GaussianBlur:
+              kernel_size: 5
+              sigma: 1.0
+          - ToTensor: null
+          - Normalize:
+              mean: [0.0, 0.0, 0.0]
+              std: [1.0, 1.0, 1.0]
+      mask_transforms:
+        - Resize:
+            size: [384, 512]
+        - ToTensor: null
+
+test:
+    batch_size: 3
+    transforms:
+      image_transforms:
+          - Resize:
+              size: [384, 512]
+          - GaussianBlur:
+              kernel_size: 5
+              sigma: 1.0
+          - ToTensor: null
+          - Normalize:
+              mean: [0.0, 0.0, 0.0]
+              std: [1.0, 1.0, 1.0]
+      mask_transforms:
+        - Resize:
+            size: [384, 512]
+        - ToTensor: null

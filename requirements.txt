@@ -1,3 +1,10 @@
 torch
 torchvision
 torchaudio
+torchinfo
+tqdm
+pillow
+matplotlib
+pyyaml
+black
+opencv-python
