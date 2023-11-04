@@ -1,5 +1,7 @@
 import os
 from PIL import Image
+import random
+import numpy
 
 from torch.utils.data import Dataset, DataLoader
 
@@ -35,6 +37,7 @@ class StemDetectionDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
+        seed: int,
         image_transform: transforms.Compose = None,
         mask_transform: transforms.Compose = None,
     ) -> None:
@@ -52,6 +55,7 @@ class StemDetectionDataset(Dataset):
         mask_transform : torchvision.transforms.Compose, optional
             The transformation function to apply to the images.
         """
+        self.seed = seed
         self.images_dir = os.path.join(data_dir, "images")
         self.masks_dir = os.path.join(data_dir, "masks")
         self.images = [
@@ -70,6 +74,7 @@ class StemDetectionDataset(Dataset):
     def __getitem__(self, idx):
         img_path = self.images[idx]
         image = Image.open(img_path)
+        seed = numpy.random.randint(self.seed)
 
         masks = (
             [
@@ -81,17 +86,23 @@ class StemDetectionDataset(Dataset):
         )
 
         if self.image_transform:
+            random.seed(seed)
+            numpy.random.seed(seed)
             image = self.image_transform(image)
 
         if self.mask_transform:
+            random.seed(seed)
+            numpy.random.seed(seed)
             masks = self.mask_transform(masks)
 
         return image, masks, img_path.split("/")[-1].split(".")[0]
 
 
-def create_dataloader(data_path, transforms_dict, batch_size, shuffle):
+def create_dataloader(data_path, transforms_dict, batch_size, shuffle, seed):
     image_transforms = create_transforms(transforms_dict["image_transforms"])
     mask_transforms = create_transforms(transforms_dict["mask_transforms"])
-    train_dataset = StemDetectionDataset(data_path, image_transforms, mask_transforms)
+    train_dataset = StemDetectionDataset(
+        data_path, seed, image_transforms, mask_transforms
+    )
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
     return train_dataloader

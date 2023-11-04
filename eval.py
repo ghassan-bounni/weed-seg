@@ -17,6 +17,7 @@ def test(
     model_config: dict,
     test_config: dict,
     checkpoint_name: str,
+    seed: int,
     output_dir: str,
 ):
     """
@@ -33,7 +34,7 @@ def test(
     ) = test_config.values()
 
     eval_dataloader = create_dataloader(
-        "data/test/", eval_transforms, batch_size, False
+        "data/test/", eval_transforms, batch_size, False, seed
     )
 
     model = BaseModel(**model_config)

@@ -44,11 +44,11 @@ def train(
     val_batch_size, val_transforms = val_config.values()
 
     train_dataloader = create_dataloader(
-        "data/train/", train_transforms, batch_size, True
+        "data/train/", train_transforms, batch_size, True, seed
     )
 
     val_dataloader = create_dataloader(
-        "data/val/", val_transforms, val_batch_size, False
+        "data/val/", val_transforms, val_batch_size, False, seed
     )
 
     model = BaseModel(**model_config)
@@ -71,6 +71,7 @@ def train(
     total_iterations = epochs * len(train_dataloader)
     start_iteration = start_epoch * len(train_dataloader)
 
+    model.train()
     for batch_idx, (inputs, labels, img_ids) in metric_logger.log_every(
         enumerate(train_dataloader),
         print_freq=1,
@@ -78,7 +79,6 @@ def train(
         n_iterations=total_iterations,
         start_iteration=start_iteration,
     ):
-        model.train()
         epoch = batch_idx // len(train_dataloader) + start_epoch
 
         inputs = inputs.to(device)
@@ -125,3 +125,5 @@ def train(
             save_checkpoint(
                 epoch, model.state_dict(), optimizer.state_dict(), save_interval
             )
+
+            model.train()
