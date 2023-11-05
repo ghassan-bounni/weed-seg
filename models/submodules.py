@@ -275,6 +275,7 @@ class Encoder(nn.Module):
                 self.in_channels.append(num_features)
 
     def forward(self, x):
+        self.skip_connections = []
         for i, (name, module) in enumerate(self.features.items()):
             x = module(x)
             if name.startswith("denseblock") and module.concat_output:

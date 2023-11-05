@@ -44,11 +44,11 @@ def train(
     val_batch_size, val_transforms = val_config.values()
 
     train_dataloader = create_dataloader(
-        "data/train/", train_transforms, batch_size, True
+        "data/train/", train_transforms, batch_size, True, seed
     )
 
     val_dataloader = create_dataloader(
-        "data/val/", val_transforms, val_batch_size, False
+        "data/val/", val_transforms, val_batch_size, False, seed
     )
 
     model = BaseModel(**model_config)

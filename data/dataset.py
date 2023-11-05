@@ -74,7 +74,7 @@ class StemDetectionDataset(Dataset):
     def __getitem__(self, idx):
         img_path = self.images[idx]
         image = Image.open(img_path)
-        seed = self.seed + idx
+        seed = numpy.random.randint(self.seed)
 
         masks = (
             [
