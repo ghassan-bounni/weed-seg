@@ -1,3 +1,5 @@
+import os
+
 import torch
 from torchinfo import summary
 
@@ -16,6 +18,7 @@ from utils.utils import (
 def test(
     model_config: dict,
     test_config: dict,
+    data_path: str,
     checkpoint_name: str,
     seed: int,
     output_dir: str,
@@ -29,18 +32,20 @@ def test(
 
     (
         batch_size,
-        loss_fn,
         eval_transforms,
     ) = test_config.values()
 
     eval_dataloader = create_dataloader(
-        "data/test/", eval_transforms, batch_size, False, seed
+        data_path=os.path.join(data_path, "test"),
+        transforms_dict=eval_transforms,
+        batch_size=batch_size,
+        shuffle=False,
+        seed=seed,
+        num_classes=model_config["out_channels"],
     )
 
     model = BaseModel(**model_config)
     model.to(device)
-
-    criterion = load_criterion(loss_fn)
 
     load_checkpoint("eval", model, checkpoint_name=checkpoint_name)
     summary(model, input_size=(batch_size, *eval_dataloader.dataset[0][0].shape))
@@ -55,13 +60,11 @@ def test(
 
             output = model(inputs)
 
-            loss = criterion(output, targets)
-            logger.info(f"loss: {loss}")
-
             # getting the class with the highest probability per pixel in each image
             output_argmax = output.argmax(1)
+            targets_argmax = targets.argmax(1)
 
-            accuracy += (output_argmax == targets).float().mean()
+            accuracy += (output_argmax == targets_argmax).float().mean()
 
             # contains the coordinates of the stems in each image
             stem_coordinates = get_stem_coordinates(
@@ -72,4 +75,4 @@ def test(
         save_data_to_json(stem_data, "stem_data.json", output_dir)
 
         accuracy /= len(eval_dataloader)
-        logger.info(f"Accuracy: {accuracy}")
+        logger.info(f"Accuracy: {(accuracy * 100):.2f}")

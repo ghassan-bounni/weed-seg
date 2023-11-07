@@ -22,6 +22,18 @@ def create_transforms(transform_configs: dict) -> transforms.Compose:
 
         if hasattr(transforms, transform_name):
             transform_class = getattr(transforms, transform_name)
+
+            if transform_name == "Resize":
+                interpolation_name = transform_params.get("interpolation", "BILINEAR")
+                if hasattr(transforms.InterpolationMode, interpolation_name):
+                    transform_params["interpolation"] = getattr(
+                        transforms.InterpolationMode, interpolation_name
+                    )
+                else:
+                    raise ValueError(
+                        f"Interpolation mode {interpolation_name} "
+                        f"not found in torchvision.transforms.InterpolationMode"
+                    )
             transforms_list.append(transform_class(**transform_params))
         else:
             raise ValueError(

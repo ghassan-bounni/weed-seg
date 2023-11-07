@@ -15,17 +15,25 @@ if __name__ == "__main__":
 
     if args.mode == "train":
         train_config = config["train"]
-        val_config = config["val"]
+        val_config = config["eval"]
         train(
             model_config,
             train_config,
             val_config,
+            args.data_path,
             args.save_interval,
             args.seed,
             args.checkpoint,
         )
     elif args.mode == "eval":
-        test_config = config["test"]
-        test(model_config, test_config, args.checkpoint, args.output)
+        test_config = config["eval"]
+        test(
+            model_config,
+            test_config,
+            args.data_path,
+            args.checkpoint,
+            args.seed,
+            args.output,
+        )
     else:
         raise ValueError(f"Task {args.task} not recognized.")
