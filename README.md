@@ -1,6 +1,6 @@
 # Weed-Seg
 
-a Python-based PyTorch training and inference pipeline for Weed Segmentation and Stem Detection.
+A Python-based PyTorch training and inference pipeline for Weed Segmentation and Stem Detection.
 
 ## Table of Contents
 
@@ -96,11 +96,6 @@ To use your PyTorch training and inference pipelines effectively, it's essential
 - Prepare your data in a directory structure that includes three main subdirectories: `train`, `val`, and `test`.
 - Inside each of these subdirectories, you should have two subdirectories: `images` and `masks`. The `images` directory contains the input images, and the `masks` directory contains corresponding segmentation masks.
 - Ensure that the image files have the same name as their corresponding masks. This is necessary for pairing images and masks during the data loading process.
-- In the case of multiple class semantic segmentation, you can organize your data as follows:
-
-  - Inside the `masks` directory, create subdirectories, each with a name corresponding to an image.
-  - Place separate masks per class for each image within the respective subdirectories.
-  - Name the mask files the same as the corresponding class name.
 
 Here's an example of the directory structure:
 
@@ -112,8 +107,8 @@ data/
 │   │   ├── image2.jpg
 │   │   └── ...
 │   └── masks/
-│       ├── image1.jpg
-│       ├── image2.jpg
+│       ├── image1.png
+│       ├── image2.png
 │       └── ...
 ├── val/
 │   ├── images/
@@ -130,7 +125,7 @@ Your PyTorch pipelines are highly configurable through a `config.yaml` file. Her
 ```yaml
 model:
   in_channels: 3
-  out_channels: 1
+  out_channels: 3
   num_init_features: 32
   num_layers: 3
   block_depth: 3
@@ -141,7 +136,6 @@ model:
   conv_mode: "full"
 
 train:
-  path: "/data/train"
   epochs: 200
   batch_size: 3
   warmup_epochs: 3
@@ -157,21 +151,13 @@ train:
     mask_transforms:
     # Define image and mask transforms here.
 
-val:
-  path: "/data/val"
+eval:
   batch_size: 3
   transforms:
     image_transforms:
     mask_transforms:
     # Define image and mask transforms here.
 
-test:
-  path: "/data/test"
-  batch_size: 3
-  transforms:
-    image_transforms:
-    mask_transforms:
-    # Define image and mask transforms here.
 ```
 
 ## Usage
@@ -181,7 +167,7 @@ test:
 To train your model, use the following command:
 
 ```bash
-python main.py --config config.yaml --mode train --output output_directory
+python main.py --config config.yaml --mode train --data-path data/ --output output_directory/
 ```
 
 You can customize the training process by modifying the parameters in the command, such as `--config`, `--output`, `--seed`, and `--save-interval`.
@@ -191,7 +177,7 @@ You can customize the training process by modifying the parameters in the comman
 To perform inference with a pre-trained model, use the following command:
 
 ```bash
-python main.py --config config.yaml --mode eval --checkpoint path/to/pretrained_model.pth --output output_directory
+python main.py --config config.yaml --mode eval --checkpoint path/to/pretrained_model.pth --data-path data/ --output output_directory
 ```
 
 Replace `path/to/pretrained_model.pth` with the path to the checkpoint file you want to use for inference.

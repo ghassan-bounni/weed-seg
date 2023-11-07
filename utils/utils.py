@@ -30,6 +30,9 @@ def parse_args():
     parser.add_argument(
         "--checkpoint", default=None, help="Path to the checkpoint file."
     )
+    parser.add_argument(
+        "--data-path", default="data/", help="Path to the data directory."
+    )
     parser.add_argument("--output", default=None, help="Path to the output directory.")
     parser.add_argument("--seed", default=42, help="Seed for reproducibility.")
     parser.add_argument(

@@ -1,43 +1,25 @@
 import os
-from PIL import Image
-import random
 import numpy
-
-from torch.utils.data import Dataset, DataLoader
+import random
+from PIL import Image
 
 from torchvision import transforms
+from torch.utils.data import Dataset, DataLoader
+
 from data.augmentations import create_transforms
+from scripts.preprocessing import create_binary_masks
 
 
 class StemDetectionDataset(Dataset):
     """
-    Custom Dataset for Object Detection
-
-    Attributes
-    ----------
-    images_dir : str
-        The path to the images directory.
-
-    masks_dir : str
-        The path to the masks directory.
-
-    image_transform : callable
-        The transformation function to apply to the images.
-
-    mask_transform : callable
-        The transformation function to apply to the mask.
-
-    images : list
-        The list of image names.
-
-    masks : list
-        The list of mask folder names.
+    Custom Dataset for Plant Segmentation and Stem Detection.
     """
 
     def __init__(
         self,
         data_dir: str,
         seed: int,
+        num_classes: int,
         image_transform: transforms.Compose = None,
         mask_transform: transforms.Compose = None,
     ) -> None:
@@ -49,6 +31,12 @@ class StemDetectionDataset(Dataset):
         data_dir : str
             The path to the data directory.
 
+        seed : int
+            The seed to use for the random number generator.
+
+        num_classes : int
+            The number of classes in the dataset.
+
         image_transform : torchvision.transforms.Compose, optional
             The transformation function to apply to the images.
 
@@ -56,15 +44,14 @@ class StemDetectionDataset(Dataset):
             The transformation function to apply to the images.
         """
         self.seed = seed
+        self.num_classes = num_classes
         self.images_dir = os.path.join(data_dir, "images")
         self.masks_dir = os.path.join(data_dir, "masks")
         self.images = [
             os.path.join(self.images_dir, img_name)
             for img_name in os.listdir(self.images_dir)
         ]
-        self.masks = [
-            os.path.join(self.masks_dir, masks) for masks in os.listdir(self.masks_dir)
-        ]
+
         self.image_transform = image_transform
         self.mask_transform = mask_transform
 
@@ -74,17 +61,11 @@ class StemDetectionDataset(Dataset):
     def __getitem__(self, idx):
         img_path = self.images[idx]
         image = Image.open(img_path)
+
+        masks_path = img_path.split(".")[0] + ".png"
+        mask = Image.open(masks_path)
+
         seed = numpy.random.randint(self.seed)
-
-        masks = (
-            [
-                Image.open(os.path.join(self.masks[idx], mask))
-                for mask in os.listdir(self.masks[idx])
-            ]
-            if os.path.isdir(self.masks[idx])
-            else Image.open(self.masks[idx])
-        )
-
         if self.image_transform:
             random.seed(seed)
             numpy.random.seed(seed)
@@ -93,16 +74,20 @@ class StemDetectionDataset(Dataset):
         if self.mask_transform:
             random.seed(seed)
             numpy.random.seed(seed)
-            masks = self.mask_transform(masks)
+            mask = self.mask_transform(mask)
+
+        masks = create_binary_masks(mask, self.num_classes)
 
         return image, masks, img_path.split("/")[-1].split(".")[0]
 
 
-def create_dataloader(data_path, transforms_dict, batch_size, shuffle, seed):
+def create_dataloader(
+    data_path, transforms_dict, batch_size, shuffle, seed, num_classes
+):
     image_transforms = create_transforms(transforms_dict["image_transforms"])
     mask_transforms = create_transforms(transforms_dict["mask_transforms"])
     train_dataset = StemDetectionDataset(
-        data_path, seed, image_transforms, mask_transforms
+        data_path, seed, num_classes, image_transforms, mask_transforms
     )
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
     return train_dataloader
