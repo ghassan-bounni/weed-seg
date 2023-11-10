@@ -14,6 +14,7 @@ from utils.utils import load_criterion, load_checkpoint, save_checkpoint
 
 
 def train_one_epoch(
+    epoch,
     model,
     train_dataloader,
     optimizer,
@@ -26,7 +27,7 @@ def train_one_epoch(
     for inputs, labels, img_ids in train_logger.log_every(
         train_dataloader,
         print_freq=1,
-        header="Train:",
+        header=f"Epoch: {epoch} Train:",
     ):
         inputs = inputs.to(device)
         labels = labels.to(device)
@@ -45,14 +46,14 @@ def train_one_epoch(
         train_logger.update(loss=loss.item())
 
 
-def validate(model, val_dataloader, criterion, device, val_logger):
+def validate(epoch, model, val_dataloader, criterion, device, val_logger):
     model.eval()
 
     val_loss = 0.0
     for val_inputs, val_labels, val_img_ids in val_logger.log_every(
-        enumerate(val_dataloader),
+        val_dataloader,
         print_freq=1,
-        header="Val:",
+        header=f"Epoch: {epoch} Val:",
     ):
         val_inputs = val_inputs.to(device)
         val_labels = val_labels.to(device)
