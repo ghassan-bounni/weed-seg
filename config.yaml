@@ -14,46 +14,53 @@ model:
 train:
   epochs: 200
   batch_size: 3
+  num_workers: 0
   warmup_epochs: 3
   weight_decay: 0.01
   lr: 0.001
-  lr_decay: 0.1
+  lr_gamma: 0.1
   lr_step: 1
+  lr_power: 1.0
   lr_scheduler: "poly"
   clip_grad: null
   loss_fn: "JaccardLoss"
   transforms:
-    image_transforms:
-      - Resize:
-          size: [290, 512]
-      - GaussianBlur:
-          kernel_size: 5
-          sigma: 1.0
-      - ToTensor: null
-      - Normalize:
-          mean: [0.0, 0.0, 0.0]
-          std: [1.0, 1.0, 1.0]
-    mask_transforms:
-      - Resize:
-          size: [290, 512]
-          interpolation: "NEAREST"
-      - ToTensor: null
+    - Resize:
+        height: 290
+        width: 512
+        always_apply: True
+    - HorizontalFlip:
+        p: 0.3
+    - Rotate:
+        limit: 20
+        border_mode: 0
+        value: 0
+        mask_value: 0
+        p: 0.4
+    - GaussianBlur:
+        blur_limit: [5, 5]
+        sigma_limit: [1.0, 1.0]
+        p: 1.0
+        always_apply: True
+    - Normalize:
+        mean: [0.0, 0.0, 0.0]
+        std: [1.0, 1.0, 1.0]
+        always_apply: True
 
 eval:
-    batch_size: 3
-    transforms:
-      image_transforms:
-          - Resize:
-              size: [290, 512]
-          - GaussianBlur:
-              kernel_size: 5
-              sigma: 1.0
-          - ToTensor: null
-          - Normalize:
-              mean: [0.0, 0.0, 0.0]
-              std: [1.0, 1.0, 1.0]
-      mask_transforms:
-        - Resize:
-            size: [290, 512]
-            interpolation: "NEAREST"
-        - ToTensor: null
+  batch_size: 3
+  num_workers: 0
+  transforms:
+    - Resize:
+        height: 290
+        width: 512
+        always_apply: True
+    - GaussianBlur:
+        blur_limit: [5, 5]
+        sigma_limit: [1.0, 1.0]
+        p: 1.0
+        always_apply: True
+    - Normalize:
+        mean: [0.0, 0.0, 0.0]
+        std: [1.0, 1.0, 1.0]
+        always_apply: True

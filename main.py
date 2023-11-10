@@ -32,7 +32,6 @@ if __name__ == "__main__":
             test_config,
             args.data_path,
             args.checkpoint,
-            args.seed,
             args.output,
         )
     else:

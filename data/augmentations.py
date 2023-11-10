@@ -1,7 +1,8 @@
-import torchvision.transforms as transforms
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 
-def create_transforms(transform_configs: dict) -> transforms.Compose:
+def create_transforms(transform_configs: dict) -> A.Compose:
     """
     Composes a list of transforms from the configuration dictionary.
 
@@ -12,32 +13,19 @@ def create_transforms(transform_configs: dict) -> transforms.Compose:
 
     Returns
     -------
-    transforms.Compose
+    albumentations.Compose
     """
     transforms_list = []
     for transform_config in transform_configs:
         transform_name, transform_params = next(iter(transform_config.items()))
-        if transform_params is None:
-            transform_params = {}  # Handle null values
+        transform_params = transform_params or {}  # Handle null values
 
-        if hasattr(transforms, transform_name):
-            transform_class = getattr(transforms, transform_name)
-
-            if transform_name == "Resize":
-                interpolation_name = transform_params.get("interpolation", "BILINEAR")
-                if hasattr(transforms.InterpolationMode, interpolation_name):
-                    transform_params["interpolation"] = getattr(
-                        transforms.InterpolationMode, interpolation_name
-                    )
-                else:
-                    raise ValueError(
-                        f"Interpolation mode {interpolation_name} "
-                        f"not found in torchvision.transforms.InterpolationMode"
-                    )
+        if hasattr(A, transform_name):
+            transform_class = getattr(A, transform_name)
             transforms_list.append(transform_class(**transform_params))
         else:
-            raise ValueError(
-                f"Transform {transform_name} not found in torchvision.transforms"
-            )
+            raise ValueError(f"Transform {transform_name} not found in albumentations")
 
-    return transforms.Compose(transforms_list)
+    transforms_list.append(ToTensorV2())
+
+    return A.Compose(transforms_list)

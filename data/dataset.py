@@ -1,9 +1,6 @@
 import os
-import numpy
-import random
-from PIL import Image
+import cv2
 
-from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 
 from data.augmentations import create_transforms
@@ -18,10 +15,8 @@ class StemDetectionDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
-        seed: int,
         num_classes: int,
-        image_transform: transforms.Compose = None,
-        mask_transform: transforms.Compose = None,
+        transform=None,
     ) -> None:
         """
         Initializes the dataset.
@@ -31,50 +26,35 @@ class StemDetectionDataset(Dataset):
         data_dir : str
             The path to the data directory.
 
-        seed : int
-            The seed to use for the random number generator.
-
         num_classes : int
             The number of classes in the dataset.
 
-        image_transform : torchvision.transforms.Compose, optional
-            The transformation function to apply to the images.
-
-        mask_transform : torchvision.transforms.Compose, optional
+        transform : albumentations.Compose, optional
             The transformation function to apply to the images.
         """
-        self.seed = seed
         self.num_classes = num_classes
         self.images_dir = os.path.join(data_dir, "images")
         self.masks_dir = os.path.join(data_dir, "masks")
-        self.images = [
-            os.path.join(self.images_dir, img_name)
-            for img_name in os.listdir(self.images_dir)
-        ]
-
-        self.image_transform = image_transform
-        self.mask_transform = mask_transform
+        self.images = os.listdir(self.images_dir)
+        self.transform = transform
 
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, idx):
-        img_path = self.images[idx]
-        image = Image.open(img_path)
+        img_path = os.path.join(self.images_dir, self.images[idx])
+        image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        masks_path = img_path.split(".")[0] + ".png"
-        mask = Image.open(masks_path)
+        masks_path = os.path.join(
+            self.masks_dir, self.images[idx].split(".")[0] + ".png"
+        )
+        mask = cv2.imread(masks_path, cv2.IMREAD_GRAYSCALE)
 
-        seed = numpy.random.randint(self.seed)
-        if self.image_transform:
-            random.seed(seed)
-            numpy.random.seed(seed)
-            image = self.image_transform(image)
-
-        if self.mask_transform:
-            random.seed(seed)
-            numpy.random.seed(seed)
-            mask = self.mask_transform(mask)
+        if self.transform:
+            transformed = self.transform(image=image, mask=mask)
+            image = transformed["image"]
+            mask = transformed["mask"]
 
         masks = create_binary_masks(mask, self.num_classes)
 
@@ -82,12 +62,12 @@ class StemDetectionDataset(Dataset):
 
 
 def create_dataloader(
-    data_path, transforms_dict, batch_size, shuffle, seed, num_classes
+    data_path, transforms_dict, batch_size, shuffle, num_classes, num_workers
 ):
-    image_transforms = create_transforms(transforms_dict["image_transforms"])
-    mask_transforms = create_transforms(transforms_dict["mask_transforms"])
     train_dataset = StemDetectionDataset(
-        data_path, seed, num_classes, image_transforms, mask_transforms
+        data_path, num_classes, create_transforms(transforms_dict)
     )
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+    train_dataloader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+    )
     return train_dataloader

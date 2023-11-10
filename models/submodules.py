@@ -51,7 +51,7 @@ class ConvNormAct(nn.Module):
         padding,
         bias,
         conv_mode="full",
-        **kwargs
+        **kwargs,
     ):
         super(ConvNormAct, self).__init__()
 
@@ -89,7 +89,7 @@ class DenseLayer(nn.Module):
         bn_size,
         drop_rate,
         conv_mode="full",
-        **kwargs
+        **kwargs,
     ) -> None:
         super(DenseLayer, self).__init__()
 
@@ -143,7 +143,7 @@ class DenseBlock(nn.ModuleDict):
         drop_rate,
         conv_mode,
         concat_output=True,
-        **kwargs
+        **kwargs,
     ) -> None:
         super(DenseBlock, self).__init__()
 
@@ -233,7 +233,7 @@ class Encoder(nn.Module):
         exp_factor,
         drop_rate,
         conv_mode,
-        **kwargs
+        **kwargs,
     ):
         super(Encoder, self).__init__()
 
@@ -292,7 +292,7 @@ class DecoderBlock(nn.Module):
         growth_rate,
         drop_rate,
         conv_mode,
-        **kwargs
+        **kwargs,
     ):
         super(DecoderBlock, self).__init__()
 
@@ -320,6 +320,10 @@ class DecoderBlock(nn.Module):
 
     def forward(self, x, skip):
         x = self.up_sample(x)
+        if x.size()[2:] != skip.size()[2:]:
+            x = torch.nn.functional.interpolate(
+                x, size=skip.size()[2:], mode="bilinear", align_corners=True
+            )
         x = torch.cat([x, skip], dim=1)
         x = self.conv(x)
         return x
@@ -335,7 +339,7 @@ class Decoder(nn.Module):
         exp_factor,
         drop_rate,
         conv_mode,
-        **kwargs
+        **kwargs,
     ):
         """
 

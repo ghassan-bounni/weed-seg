@@ -91,7 +91,8 @@ project-root/
 
 ## Data
 
-To use your PyTorch training and inference pipelines effectively, it's essential to organize your data as follows:
+To use the training and inference pipelines effectively, it's essential to organize your 
+data as follows:
 
 - Prepare your data in a directory structure that includes three main subdirectories: `train`, `val`, and `test`.
 - Inside each of these subdirectories, you should have two subdirectories: `images` and `masks`. The `images` directory contains the input images, and the `masks` directory contains corresponding segmentation masks.
@@ -120,7 +121,8 @@ data/
 
 ## Configuration
 
-Your PyTorch pipelines are highly configurable through a `config.yaml` file. Here's an example of the structure and some of the key configuration options:
+The pipelines are highly configurable through a `config.yaml` file. Here's an example of the 
+structure and some of the key configuration options:
 
 ```yaml
 model:
@@ -129,36 +131,70 @@ model:
   num_init_features: 32
   num_layers: 3
   block_depth: 3
-  growth_rate: 4
+  growth_rate: 7
   exp_factor: 2
   drop_rate: 0.2
   kernel_size: 3
   conv_mode: "full"
 
+
 train:
   epochs: 200
   batch_size: 3
+  num_workers: 0
   warmup_epochs: 3
   weight_decay: 0.01
-  lr: 0.001
-  lr_decay: 0.1
+  lr_gamma: 0.1
   lr_step: 1
+  lr_power: 1.0
   lr_scheduler: "poly"
   clip_grad: null
   loss_fn: "JaccardLoss"
   transforms:
-    image_transforms:
-    mask_transforms:
-    # Define image and mask transforms here.
+    - Resize:
+        height: 290
+        width: 512
+        always_apply: True
+    - HorizontalFlip:
+        p: 0.3
+    - Rotate:
+        limit: 20
+        border_mode: 0
+        value: 0
+        mask_value: 0
+        p: 0.4
+    - GaussianBlur:
+        blur_limit: [5, 5]
+        sigma_limit: [1.0, 1.0]
+        p: 1.0
+        always_apply: True
+    - Normalize:
+        mean: [0.0, 0.0, 0.0]
+        std: [1.0, 1.0, 1.0]
+        always_apply: True
+     ## Add more transforms here
 
 eval:
   batch_size: 3
+  num_workers: 4
   transforms:
-    image_transforms:
-    mask_transforms:
-    # Define image and mask transforms here.
+    - Resize:
+        height: 290
+        width: 512
+        always_apply: True
+    - GaussianBlur:
+        blur_limit: [5, 5]
+        sigma_limit: [1.0, 1.0]
+        p: 1.0
+        always_apply: True
+    - Normalize:
+        mean: [0.0, 0.0, 0.0]
+        std: [1.0, 1.0, 1.0]
+        always_apply: True
+    ## Add more transforms here
 
 ```
+For more information on the available transform options, please refer to the [Albumentations documentation](https://albumentations.ai/docs/api_reference/full_reference/).
 
 ## Usage
 
