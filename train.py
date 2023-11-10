@@ -23,8 +23,8 @@ def train_one_epoch(
     train_logger,
 ):
     model.train()
-    for batch_idx, (inputs, labels, img_ids) in train_logger.log_every(
-        enumerate(train_dataloader),
+    for inputs, labels, img_ids in train_logger.log_every(
+        train_dataloader,
         print_freq=1,
         header="Train:",
     ):
@@ -49,7 +49,7 @@ def validate(model, val_dataloader, criterion, device, val_logger):
     model.eval()
 
     val_loss = 0.0
-    for val_batch_idx, (val_inputs, val_labels, val_img_ids) in val_logger.log_every(
+    for val_inputs, val_labels, val_img_ids in val_logger.log_every(
         enumerate(val_dataloader),
         print_freq=1,
         header="Val:",
