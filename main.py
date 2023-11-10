@@ -21,7 +21,7 @@ if __name__ == "__main__":
             train_config,
             val_config,
             args.data_path,
-            args.save_interval,
+            int(args.save_interval),
             args.seed,
             args.checkpoint,
         )

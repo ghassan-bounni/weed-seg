@@ -49,7 +49,6 @@ def train_one_epoch(
 def validate(epoch, model, val_dataloader, criterion, device, val_logger):
     model.eval()
 
-    val_loss = 0.0
     for val_inputs, val_labels, val_img_ids in val_logger.log_every(
         val_dataloader,
         print_freq=1,
@@ -60,10 +59,9 @@ def validate(epoch, model, val_dataloader, criterion, device, val_logger):
 
         with torch.no_grad():
             val_output = model(val_inputs)
-            val_loss += criterion(val_output, val_labels).item()
+            val_loss = criterion(val_output, val_labels).item()
 
-    val_loss /= len(val_dataloader)
-    val_logger.update(val_loss=val_loss)
+        val_logger.update(val_loss=val_loss)
 
 
 def train(
