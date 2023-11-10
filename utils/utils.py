@@ -140,6 +140,7 @@ def save_checkpoint(epoch, model_state, optimizer_state, save_interval):
     """
     Saves epoch number, model state, and optimizer state to a checkpoint.
     """
+    os.makedirs("checkpoints", exist_ok=True)
 
     checkpoint = {
         "epoch": epoch,
