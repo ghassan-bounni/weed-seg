@@ -68,6 +68,10 @@ def create_dataloader(
         data_path, num_classes, create_transforms(transforms_dict)
     )
     train_dataloader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        drop_last=True,
     )
     return train_dataloader
