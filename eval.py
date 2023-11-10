@@ -8,7 +8,6 @@ from data.dataset import create_dataloader
 
 import logging
 from utils.utils import (
-    load_criterion,
     load_checkpoint,
     get_stem_coordinates,
     save_data_to_json,
@@ -20,7 +19,6 @@ def test(
     test_config: dict,
     data_path: str,
     checkpoint_name: str,
-    seed: int,
     output_dir: str,
 ):
     """
@@ -32,6 +30,7 @@ def test(
 
     (
         batch_size,
+        num_workers,
         eval_transforms,
     ) = test_config.values()
 
@@ -40,8 +39,8 @@ def test(
         transforms_dict=eval_transforms,
         batch_size=batch_size,
         shuffle=False,
-        seed=seed,
         num_classes=model_config["out_channels"],
+        num_workers=num_workers,
     )
 
     model = BaseModel(**model_config)

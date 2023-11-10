@@ -2,7 +2,7 @@ import os
 
 import torch
 from torch.nn.utils import clip_grad_norm_
-from torch.optim.lr_scheduler import LambdaLR, StepLR
+from torch.optim.lr_scheduler import PolynomialLR, StepLR
 from torchinfo import summary
 
 from logger import MetricLogger
@@ -33,26 +33,28 @@ def train(
     (
         epochs,
         batch_size,
+        num_workers,
         warmup_epochs,
         weight_decay,
         lr,
-        lr_decay,
+        lr_gamma,
         lr_step,
+        lr_power,
         lr_scheduler,
         clip_grad,
         loss_fn,
-        train_transforms,
+        transforms,
     ) = train_config.values()
 
-    val_batch_size, val_transforms = val_config.values()
+    val_batch_size, val_num_workers, val_transforms = val_config.values()
 
     train_dataloader = create_dataloader(
         data_path=os.path.join(data_path, "train"),
-        transforms_dict=train_transforms,
+        transforms_dict=transforms,
         batch_size=batch_size,
         shuffle=True,
-        seed=seed,
         num_classes=model_config["out_channels"],
+        num_workers=num_workers,
     )
 
     val_dataloader = create_dataloader(
@@ -60,8 +62,8 @@ def train(
         transforms_dict=val_transforms,
         batch_size=val_batch_size,
         shuffle=False,
-        seed=seed,
         num_classes=model_config["out_channels"],
+        num_workers=val_num_workers,
     )
 
     model = BaseModel(**model_config)
@@ -74,9 +76,9 @@ def train(
     summary(model, input_size=(batch_size, *train_dataloader.dataset[0][0].shape))
 
     scheduler = (
-        LambdaLR(optimizer, lambda e: (1 - e / epochs) ** lr_decay)
+        PolynomialLR(optimizer, total_iters=epochs, power=lr_power)
         if (lr_scheduler == "poly")
-        else StepLR(optimizer, step_size=lr_step, gamma=lr_decay)
+        else StepLR(optimizer, step_size=lr_step, gamma=lr_gamma)
     )
 
     train_logger = MetricLogger(delimiter=" ")
