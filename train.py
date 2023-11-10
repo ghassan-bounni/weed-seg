@@ -141,6 +141,7 @@ def train(
     model.train()
     for epoch in tqdm(range(start_epoch, epochs), desc="Epochs", unit="epoch"):
         train_one_epoch(
+            epoch,
             model,
             train_dataloader,
             optimizer,
@@ -150,7 +151,7 @@ def train(
             train_logger,
         )
 
-        validate(model, val_dataloader, criterion, device, val_logger)
+        validate(epoch, model, val_dataloader, criterion, device, val_logger)
 
         # Gradual warm-up: Adjust learning rate for warm-up epochs
         if epoch < warmup_epochs:
