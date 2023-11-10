@@ -31,8 +31,12 @@ train:
         always_apply: True
     - HorizontalFlip:
         p: 0.3
-    - RandomRotate90:
-        p: 0.3
+    - Rotate:
+        limit: 20
+        border_mode: 0
+        value: 0
+        mask_value: 0
+        p: 0.4
     - GaussianBlur:
         blur_limit: [5, 5]
         sigma_limit: [1.0, 1.0]
