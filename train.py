@@ -5,11 +5,63 @@ from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import PolynomialLR, StepLR
 from torchinfo import summary
 
+from tqdm import tqdm
 from logger import MetricLogger
 from models.base import BaseModel
 from data.dataset import create_dataloader
 
 from utils.utils import load_criterion, load_checkpoint, save_checkpoint
+
+
+def train_one_epoch(
+    epoch,
+    model,
+    train_dataloader,
+    optimizer,
+    criterion,
+    clip_grad,
+    device,
+    train_logger,
+):
+    model.train()
+    for inputs, labels, img_ids in train_logger.log_every(
+        train_dataloader,
+        print_freq=1,
+        header=f"Epoch: {epoch} Train:",
+    ):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        output = model(inputs)
+        loss = criterion(output, labels)
+
+        optimizer.zero_grad()
+        loss.backward()
+
+        if clip_grad is not None:
+            clip_grad_norm_(model.parameters(), clip_grad)
+
+        optimizer.step()
+
+        train_logger.update(loss=loss.item())
+
+
+def validate(epoch, model, val_dataloader, criterion, device, val_logger):
+    model.eval()
+
+    for val_inputs, val_labels, val_img_ids in val_logger.log_every(
+        val_dataloader,
+        print_freq=1,
+        header=f"Epoch: {epoch} Val:",
+    ):
+        val_inputs = val_inputs.to(device)
+        val_labels = val_labels.to(device)
+
+        with torch.no_grad():
+            val_output = model(val_inputs)
+            val_loss = criterion(val_output, val_labels).item()
+
+        val_logger.update(val_loss=val_loss)
 
 
 def train(
@@ -84,69 +136,30 @@ def train(
     train_logger = MetricLogger(delimiter=" ")
     val_logger = MetricLogger(delimiter=" ")
 
-    total_iterations = epochs * len(train_dataloader)
-    start_iteration = start_epoch * len(train_dataloader)
-
     model.train()
-    for batch_idx, (inputs, labels, img_ids) in train_logger.log_every(
-        enumerate(train_dataloader),
-        print_freq=1,
-        header="Train:",
-        n_iterations=total_iterations,
-        start_iteration=start_iteration,
-    ):
-        epoch = batch_idx // len(train_dataloader) + start_epoch
+    for epoch in tqdm(range(start_epoch, epochs), desc="Epochs", unit="epoch"):
+        train_one_epoch(
+            epoch,
+            model,
+            train_dataloader,
+            optimizer,
+            criterion,
+            clip_grad,
+            device,
+            train_logger,
+        )
 
-        inputs = inputs.to(device)
-        labels = labels.to(device)
+        validate(epoch, model, val_dataloader, criterion, device, val_logger)
 
-        output = model(inputs)
-        loss = criterion(output, labels)
+        # Gradual warm-up: Adjust learning rate for warm-up epochs
+        if epoch < warmup_epochs:
+            warmup_factor = epoch / warmup_epochs
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = param_group["initial_lr"] * warmup_factor
+        # Update the learning rate after warm-up
+        else:
+            scheduler.step()
 
-        optimizer.zero_grad()
-        loss.backward()
-
-        if clip_grad is not None:
-            clip_grad_norm_(model.parameters(), clip_grad)
-
-        optimizer.step()
-
-        train_logger.update(loss=loss.item())
-
-        if batch_idx + 1 % len(train_dataloader) == 0:
-            model.eval()
-
-            val_loss = 0.0
-            for val_batch_idx, (
-                val_inputs,
-                val_labels,
-                val_img_ids,
-            ) in val_logger.log_every(
-                enumerate(val_dataloader),
-                print_freq=1,
-                header="Val:",
-            ):
-                val_inputs = val_inputs.to(device)
-                val_labels = val_labels.to(device)
-
-                with torch.no_grad():
-                    val_output = model(val_inputs)
-                    val_loss += criterion(val_output, val_labels).item()
-
-            val_loss /= len(val_dataloader)
-            val_logger.update(val_loss=val_loss)
-
-            # Gradual warm-up: Adjust learning rate for warm-up epochs
-            if epoch < warmup_epochs:
-                warmup_factor = epoch / warmup_epochs
-                for param_group in optimizer.param_groups:
-                    param_group["lr"] = param_group["initial_lr"] * warmup_factor
-            # Update the learning rate after warm-up
-            else:
-                scheduler.step()
-
-            save_checkpoint(
-                epoch, model.state_dict(), optimizer.state_dict(), save_interval
-            )
-
-            model.train()
+        save_checkpoint(
+            epoch, model.state_dict(), optimizer.state_dict(), save_interval
+        )
