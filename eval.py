@@ -18,7 +18,7 @@ def test(
     model_config: dict,
     test_config: dict,
     data_path: str,
-    checkpoint_name: str,
+    checkpoint: str,
     output_dir: str,
 ):
     """
@@ -46,7 +46,7 @@ def test(
     model = BaseModel(**model_config)
     model.to(device)
 
-    load_checkpoint("eval", model, checkpoint_name=checkpoint_name)
+    load_checkpoint("eval", model, checkpoint=checkpoint)
     summary(model, input_size=(batch_size, *eval_dataloader.dataset[0][0].shape))
 
     model.eval()
