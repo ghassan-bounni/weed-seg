@@ -28,11 +28,9 @@ def parse_args():
         choices=["train", "eval"],
     )
     parser.add_argument(
-        "--checkpoint", default=None, help="Path to the checkpoint file."
+        "--checkpoint", default="output/", help="Path to the checkpoint file."
     )
-    parser.add_argument(
-        "--data-path", default="data/", help="Path to the data directory."
-    )
+    parser.add_argument("--data", default="data/", help="Path to the data directory.")
     parser.add_argument("--output", default=None, help="Path to the output directory.")
     parser.add_argument("--seed", default=42, help="Seed for reproducibility.")
     parser.add_argument(
@@ -104,18 +102,14 @@ def load_checkpoint(
     mode: str,
     model: nn.Module,
     optimizer: optim.Optimizer = None,
-    checkpoint_name: str = None,
+    checkpoint: str = None,
 ):
     """
     Loads a selected checkpoint if it exists or checks for the latest checkpoint.\n
     If no checkpoint exists, starts from epoch 0.
     """
 
-    checkpoint_path = (
-        "checkpoints/checkpoint_latest.pth"
-        if checkpoint_name is None
-        else f"checkpoints/{checkpoint_name}"
-    )
+    checkpoint_path = checkpoint or "checkpoints/checkpoint_latest.pth"
 
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -129,8 +123,8 @@ def load_checkpoint(
         return epoch + 1
 
     else:
-        if checkpoint_name:
-            raise ValueError(f"Checkpoint: {checkpoint_name} not found.")
+        if checkpoint:
+            raise ValueError(f"Checkpoint: {checkpoint} not found.")
         else:
             logger.info("No checkpoint found. Starting from epoch 0.")
             return 0
@@ -169,10 +163,12 @@ def get_stem_coordinates(
             _, _, _, centroids = cv2.connectedComponentsWithStats(
                 binary_mask, connectivity=8
             )
-            stem_coordinates[class_id] = {
-                "file_name": image_id,
-                "stems": centroids[1:].tolist(),
-            }
+            stem_coordinates.append(
+                {
+                    "file_name": image_id,
+                    "stems": centroids[1:].tolist(),
+                }
+            )
 
     return stem_coordinates
 
