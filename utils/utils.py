@@ -28,10 +28,12 @@ def parse_args():
         choices=["train", "eval"],
     )
     parser.add_argument(
-        "--checkpoint", default="output/", help="Path to the checkpoint file."
+        "--checkpoint", default=None, help="Path to the checkpoint file."
     )
     parser.add_argument("--data", default="data/", help="Path to the data directory.")
-    parser.add_argument("--output", default=None, help="Path to the output directory.")
+    parser.add_argument(
+        "--output", default="output/", help="Path to the output directory."
+    )
     parser.add_argument("--seed", default=42, help="Seed for reproducibility.")
     parser.add_argument(
         "--save-interval", default=1, help="Checkpoint save interval (epochs)."
