@@ -203,10 +203,11 @@ For more information on the available transform options, please refer to the [Al
 To train your model, use the following command:
 
 ```bash
-python main.py --config config.yaml --mode train --data-path data/ --output output_directory/
+python main.py --config config.yaml --mode train --data data/ --output output_directory/
 ```
 
-You can customize the training process by modifying the parameters in the command, such as `--config`, `--output`, `--seed`, and `--save-interval`.
+You can customize the training process by modifying the parameters in the command, such as 
+`--config`, `--output`, `--checkpoint`, `--seed`, and `--save-interval`.
 
 ### Inference
 

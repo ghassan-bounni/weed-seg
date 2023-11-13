@@ -20,7 +20,7 @@ if __name__ == "__main__":
             model_config,
             train_config,
             val_config,
-            args.data_path,
+            args.data,
             int(args.save_interval),
             args.seed,
             args.checkpoint,
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         test(
             model_config,
             test_config,
-            args.data_path,
+            args.data,
             args.checkpoint,
             args.output,
         )
