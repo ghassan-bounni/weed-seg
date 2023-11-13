@@ -25,10 +25,14 @@ class JaccardLoss(nn.Module):
         self.smooth = smooth
 
     def forward(self, y_pred, y_true):
-        intersection = torch.sum(y_true * y_pred)
-        union = torch.sum(y_true) + torch.sum(y_pred) - intersection
+        intersection = torch.sum(
+            y_true * y_pred, dim=(2, 3)
+        )  # Sum along the height and width dimensions
+        union = (
+            torch.sum(y_true, dim=(2, 3)) + torch.sum(y_pred, dim=(2, 3)) - intersection
+        )
         jaccard_index = (intersection + self.smooth) / (union + self.smooth)
-        return 1 - jaccard_index
+        return 1 - jaccard_index.mean()  # Take the mean over the batch dimension
 
 
 class BboxLoss(nn.Module):
