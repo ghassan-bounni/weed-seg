@@ -1,5 +1,3 @@
-# Adapted from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/loss.py
-
 import torch
 import torch.nn as nn
 
@@ -8,33 +6,106 @@ from utils.metrics import bbox_iou
 from utils.utils import bbox2dist, select_candidates_in_gts, select_highest_overlaps
 
 
+# Adapted from https://github.com/BloodAxe/pytorch-toolbelt/blob/develop/pytorch_toolbelt/losses/functional.py#L168
+def soft_jaccard_score(
+    output: torch.Tensor,
+    target: torch.Tensor,
+    smooth: float = 0.0,
+    eps: float = 1e-7,
+    dims=None,
+) -> torch.Tensor:
+    """
+
+    :param output:
+    :param target:
+    :param smooth:
+    :param eps:
+    :param dims:
+    :return:
+
+    Shape:
+        - Input: :math:`(N, NC, *)` where :math:`*` means
+            any number of additional dimensions
+        - Target: :math:`(N, NC, *)`, same shape as the input
+        - Output: scalar.
+
+    """
+    assert output.size() == target.size()
+
+    if dims is not None:
+        intersection = torch.sum(output * target, dim=dims)
+        cardinality = torch.sum(output + target, dim=dims)
+    else:
+        intersection = torch.sum(output * target)
+        cardinality = torch.sum(output + target)
+
+    union = cardinality - intersection
+    jaccard_score = (intersection + smooth) / (union + smooth).clamp_min(eps)
+    return jaccard_score
+
+
+# Adapted from https://github.com/BloodAxe/pytorch-toolbelt/blob/develop/pytorch_toolbelt/losses/jaccard.py
 class JaccardLoss(nn.Module):
     """
-    Jaccard loss for segmentation.\n
-    It calculates the jaccard_index (IOU) between the predicted and target masks
-    and then returns 1 - jaccard_index.
-
-    Attributes
-    ----------
-    smooth : float
-        Smoothing factor to avoid division by zero.
+    Implementation of Jaccard loss for image segmentation task.
     """
 
-    def __init__(self, smooth=1.0):
+    def __init__(
+        self,
+        smooth=1e-7,
+        eps=1e-7,
+    ):
+        """
+
+        :param smooth:
+        :param eps: Small epsilon for numerical stability
+        """
         super(JaccardLoss, self).__init__()
         self.smooth = smooth
+        self.eps = eps
 
-    def forward(self, y_pred, y_true):
-        intersection = torch.sum(
-            y_true * y_pred, dim=(2, 3)
-        )  # Sum along the height and width dimensions
-        union = (
-            torch.sum(y_true, dim=(2, 3)) + torch.sum(y_pred, dim=(2, 3)) - intersection
+    def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
+        """
+
+        :param y_pred: NxCxHxW
+        :param y_true: NXCxHxW
+        :return: scalar
+        """
+        assert y_true.size(0) == y_pred.size(0)
+
+        # Apply activations to get [0..1] class probabilities
+        # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
+        # extreme values 0 and 1
+        y_pred = y_pred.log_softmax(dim=1).exp()
+
+        bs = y_true.size(0)
+        num_classes = y_pred.size(1)
+        dims = (0, 2)
+
+        y_true = y_true.view(bs, num_classes, -1)
+        y_pred = y_pred.view(bs, num_classes, -1)
+
+        scores = soft_jaccard_score(
+            y_pred,
+            y_true.type(y_pred.dtype),
+            smooth=self.smooth,
+            eps=self.eps,
+            dims=dims,
         )
-        jaccard_index = (intersection + self.smooth) / (union + self.smooth)
-        return 1 - jaccard_index.mean()  # Take the mean over the batch dimension
+
+        loss = 1.0 - scores
+
+        # IoU loss is defined for non-empty classes
+        # So we zero contribution of channel that does not have true pixels
+        # NOTE: A better workaround would be to use loss term `mean(y_pred)`
+        # for this case, however it will be a modified jaccard loss
+        mask = y_true.sum(dims) > 0
+        loss *= mask.float()
+
+        return loss.mean()
 
 
+# Adapted from https://github.com/BloodAxe/pytorch-toolbelt/blob/develop/pytorch_toolbelt/losses/jaccard.py#L18
 class BboxLoss(nn.Module):
     """Criterion class for computing training losses during training."""
 
