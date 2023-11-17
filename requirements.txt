@@ -9,3 +9,5 @@ pyyaml
 black
 opencv-python
 albumentations
+wandb
+python-dotenv

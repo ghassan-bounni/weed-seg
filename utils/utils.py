@@ -19,24 +19,32 @@ logger = logging.getLogger("StemDetectionLogger")
 def parse_args():
     parser = argparse.ArgumentParser(description="Model Pipeline")
     parser.add_argument(
-        "--config", default="config.yaml", help="Path to the config file."
+        "--config", default="config.yaml", type=str, help="Path to the config file."
     )
     parser.add_argument(
         "--mode",
         default="train",
+        type=str,
         help="Mode to run the pipeline in.",
         choices=["train", "eval"],
     )
     parser.add_argument(
-        "--checkpoint", default=None, help="Path to the checkpoint file."
+        "--checkpoint", default=None, type=str, help="Path to the checkpoint file."
     )
-    parser.add_argument("--data", default="data/", help="Path to the data directory.")
     parser.add_argument(
-        "--output", default="output/", help="Path to the output directory."
+        "--data", default="data/", type=str, help="Path to the data directory."
     )
-    parser.add_argument("--seed", default=42, help="Seed for reproducibility.")
     parser.add_argument(
-        "--save-interval", default=1, help="Checkpoint save interval (epochs)."
+        "--output", default="output/", type=str, help="Path to the output directory."
+    )
+    parser.add_argument(
+        "--seed", default=42, type=int, help="Seed for reproducibility."
+    )
+    parser.add_argument(
+        "--save-interval",
+        default=1,
+        type=int,
+        help="Checkpoint save interval (epochs).",
     )
 
     args = parser.parse_args()

@@ -1,5 +1,7 @@
 import os
 
+import wandb
+
 import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.optim.lr_scheduler import PolynomialLR, StepLR
@@ -27,7 +29,7 @@ def train_one_epoch(
     model.train()
     for inputs, labels, img_ids in train_logger.log_every(
         train_dataloader,
-        print_freq=1,
+        print_freq=10,
         header=f"Epoch: {epoch} Train:",
     ):
         inputs = inputs.to(device)
@@ -46,7 +48,7 @@ def train_one_epoch(
 
         train_logger.update(loss=loss.item())
 
-    return {k: meter.global_avg for k, meter in train_logger.meters.items()}
+    return {k: round(meter.global_avg, 3) for k, meter in train_logger.meters.items()}
 
 
 def validate(epoch, model, val_dataloader, criterion, device):
@@ -55,7 +57,7 @@ def validate(epoch, model, val_dataloader, criterion, device):
     model.eval()
     for val_inputs, val_labels, val_img_ids in val_logger.log_every(
         val_dataloader,
-        print_freq=1,
+        print_freq=10,
         header=f"Epoch: {epoch} Val:",
     ):
         val_inputs = val_inputs.to(device)
@@ -67,7 +69,7 @@ def validate(epoch, model, val_dataloader, criterion, device):
 
         val_logger.update(val_loss=val_loss)
 
-    return {k: meter.global_avg for k, meter in val_logger.meters.items()}
+    return {k: round(meter.global_avg, 3) for k, meter in val_logger.meters.items()}
 
 
 def train(
@@ -139,36 +141,33 @@ def train(
         else StepLR(optimizer, step_size=lr_step, gamma=lr_gamma)
     )
 
+    wandb.watch(model, criterion, log="all", log_freq=10)
+
     model.train()
-    with tqdm(range(start_epoch, epochs), desc="Epochs", unit="epoch") as pbar:
-        for epoch in pbar:
-            train_metrics = train_one_epoch(
-                epoch,
-                model,
-                train_dataloader,
-                optimizer,
-                criterion,
-                clip_grad,
-                device,
-            )
+    for epoch in range(start_epoch, epochs):
+        train_metrics = train_one_epoch(
+            epoch,
+            model,
+            train_dataloader,
+            optimizer,
+            criterion,
+            clip_grad,
+            device,
+        )
 
-            val_metrics = validate(epoch, model, val_dataloader, criterion, device)
+        val_metrics = validate(epoch, model, val_dataloader, criterion, device)
 
-            pbar.set_postfix(
-                **train_metrics,
-                **val_metrics,
-                lr=optimizer.param_groups[0]["lr"],
-            )
+        wandb.log({"epoch": epoch, **train_metrics, **val_metrics})
 
-            # Gradual warm-up: Adjust learning rate for warm-up epochs
-            if epoch < warmup_epochs:
-                warmup_factor = epoch / warmup_epochs
-                for param_group in optimizer.param_groups:
-                    param_group["lr"] = param_group["initial_lr"] * warmup_factor
-            # Update the learning rate after warm-up
-            else:
-                scheduler.step()
+        # Gradual warm-up: Adjust learning rate for warm-up epochs
+        if epoch < warmup_epochs:
+            warmup_factor = epoch / warmup_epochs
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = param_group["initial_lr"] * warmup_factor
+        # Update the learning rate after warm-up
+        else:
+            scheduler.step()
 
-            save_checkpoint(
-                epoch, model.state_dict(), optimizer.state_dict(), save_interval
-            )
+        save_checkpoint(
+            epoch, model.state_dict(), optimizer.state_dict(), save_interval
+        )

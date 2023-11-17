@@ -127,7 +127,7 @@ class MetricLogger(object):
                 header,
                 total_time_str,
                 total_time / n_iterations,
-                {k: meter.global_avg for k, meter in self.meters.items()},
+                {k: round(meter.global_avg, 3) for k, meter in self.meters.items()},
             )
         )
 

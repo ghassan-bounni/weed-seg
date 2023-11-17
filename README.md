@@ -200,14 +200,42 @@ For more information on the available transform options, please refer to the [Al
 
 ### Training
 
-To train your model, use the following command:
+To train your model, you have two options:
 
+#### Option 1: Using the `train.sh` script
+
+1. Run the provided `train.sh` script:
+
+    ```bash
+    ./train.sh # you can also redirect the output to a log file
+    ```
+
+   You can modify the template in the `train.sh` script to suit your requirements.
+
+#### Option 2: Manual Configuration
+
+1. If you prefer not to use the `train.sh` script, create a `.env` file with the following environment variables:
+
+    ```env
+    WANDB_API_KEY=your_wandb_api_key
+    WANDB_PROJECT=your_wandb_project_name # optional, default is "weed-seg"
+    WANDB_NAME=your_wandb_run_name # optional
+    WANDB_NOTES=your_wandb_run_notes # optional
+    ```
+
+2. Then, run the training command manually:
+
+    ```bash
+    python main.py --config config.yaml --mode train --data data/ --output output_directory/
+    ```
+
+   Make sure to replace the placeholders (`your_wandb_api_key`, `your_wandb_project_name`, `your_wandb_run_name`, `your_wandb_run_notes`) with your actual values.
+
+For more info on model the script arguments use:
+    
 ```bash
-python main.py --config config.yaml --mode train --data data/ --output output_directory/
+python main.py --help
 ```
-
-You can customize the training process by modifying the parameters in the command, such as 
-`--config`, `--output`, `--checkpoint`, `--seed`, and `--save-interval`.
 
 ### Inference
 
