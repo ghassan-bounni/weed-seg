@@ -107,7 +107,6 @@ class BaseModel(nn.Module):
                 padding=0,
                 bias=False,
             ),
-            nn.Softmax(dim=1),
         )
 
     def forward(self, x):
