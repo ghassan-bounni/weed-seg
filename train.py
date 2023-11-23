@@ -17,6 +17,7 @@ from utils.utils import load_criterion, load_checkpoint, save_checkpoint
 
 def train_one_epoch(
     epoch,
+    warmup_epochs,
     model,
     train_dataloader,
     optimizer,
@@ -27,6 +28,13 @@ def train_one_epoch(
     train_logger = MetricLogger(delimiter=" ")
 
     model.train()
+
+    # Gradual warm-up: Adjust learning rate for warm-up epochs
+    if epoch + 1 <= warmup_epochs:
+        warmup_factor = (epoch + 1) / warmup_epochs
+        for param_group in optimizer.param_groups:
+            param_group["lr"] = param_group["initial_lr"] * warmup_factor
+
     for inputs, labels, img_ids in train_logger.log_every(
         train_dataloader,
         print_freq=10,
@@ -147,6 +155,7 @@ def train(
     for epoch in range(start_epoch, epochs):
         train_metrics = train_one_epoch(
             epoch,
+            warmup_epochs,
             model,
             train_dataloader,
             optimizer,
@@ -159,13 +168,8 @@ def train(
 
         wandb.log({"epoch": epoch, **train_metrics, **val_metrics})
 
-        # Gradual warm-up: Adjust learning rate for warm-up epochs
-        if epoch < warmup_epochs:
-            warmup_factor = epoch / warmup_epochs
-            for param_group in optimizer.param_groups:
-                param_group["lr"] = param_group["initial_lr"] * warmup_factor
         # Update the learning rate after warm-up
-        else:
+        if epoch + 1 > warmup_epochs:
             scheduler.step()
 
         save_checkpoint(
