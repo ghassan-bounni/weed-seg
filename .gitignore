@@ -178,3 +178,8 @@ data/train/
 data/test/
 data/valid/
 data/val/
+
+wandb/
+runs/
+output/
+*.out
