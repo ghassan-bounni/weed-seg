@@ -1,6 +1,9 @@
 import os
 
+import cv2
 import torch
+import torch.nn.functional as F
+import torchmetrics.functional.classification as metrics
 from torchinfo import summary
 
 from models.base import BaseModel
@@ -27,6 +30,8 @@ def test(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger = logging.getLogger("StemDetectionLogger")
+    masks_dir = os.path.join(output_dir, "masks")
+    os.makedirs(masks_dir, exist_ok=True)
 
     (
         batch_size,
@@ -54,16 +59,24 @@ def test(
         accuracy = 0
         stem_data = {"results": []}
         for batch_idx, (inputs, targets, img_ids) in enumerate(eval_dataloader):
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+            inputs, targets = inputs.to(device), targets.to(device)
 
-            output = model(inputs)
+            # forward pass
+            logits = model(inputs)
+            output = F.softmax(logits, dim=1)
 
             # getting the class with the highest probability per pixel in each image
             output_argmax = output.argmax(1)
-            targets_argmax = targets.argmax(1)
 
-            accuracy += (output_argmax == targets_argmax).float().mean()
+            # calculating the accuracy
+            accuracy += metrics.multiclass_accuracy(
+                output_argmax, targets, num_classes=output.shape[1]
+            ).item()
+
+            # saving the masks
+            for img_id, img in zip(img_ids, output_argmax):
+                mask_path = os.path.join(masks_dir, f"{img_id.split('.')[0]}.png")
+                cv2.imwrite(mask_path, img.cpu().numpy())
 
             # contains the coordinates of the stems in each image
             stem_coordinates = get_stem_coordinates(
@@ -74,4 +87,4 @@ def test(
         save_data_to_json(stem_data, "stem_data.json", output_dir)
 
         accuracy /= len(eval_dataloader)
-        logger.info(f"Accuracy: {(accuracy * 100):.2f}")
+        logger.info(f"Accuracy: {(accuracy * 100):.2f}%")

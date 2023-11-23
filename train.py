@@ -3,11 +3,12 @@ import os
 import wandb
 
 import torch
+import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
+import torchmetrics.functional.classification as metrics
 from torch.optim.lr_scheduler import PolynomialLR, StepLR
 from torchinfo import summary
 
-from tqdm import tqdm
 from logger import MetricLogger
 from models.base import BaseModel
 from data.dataset import create_dataloader
@@ -43,8 +44,19 @@ def train_one_epoch(
         inputs = inputs.to(device)
         labels = labels.to(device)
 
-        output = model(inputs)
-        loss = criterion(output, labels)
+        logits = model(inputs)
+        loss = criterion(logits, labels)
+        output = F.softmax(logits, dim=1)
+
+        accuracy = metrics.multiclass_accuracy(
+            output.argmax(1), labels, num_classes=output.size(1)
+        )
+
+        train_logger.update(
+            lr=optimizer.param_groups[0]["lr"],
+            loss=loss.item(),
+            accuracy=accuracy.item(),
+        )
 
         optimizer.zero_grad()
         loss.backward()
@@ -54,9 +66,7 @@ def train_one_epoch(
 
         optimizer.step()
 
-        train_logger.update(loss=loss.item())
-
-    return {k: round(meter.global_avg, 3) for k, meter in train_logger.meters.items()}
+    return {k: meter.global_avg for k, meter in train_logger.meters.items()}
 
 
 def validate(epoch, model, val_dataloader, criterion, device):
@@ -72,12 +82,19 @@ def validate(epoch, model, val_dataloader, criterion, device):
         val_labels = val_labels.to(device)
 
         with torch.no_grad():
-            val_output = model(val_inputs)
-            val_loss = criterion(val_output, val_labels).item()
+            val_logits = model(val_inputs)
+            val_loss = criterion(val_logits, val_labels)
+            val_output = F.softmax(val_logits, dim=1)
 
-        val_logger.update(val_loss=val_loss)
+        val_accuracy = metrics.multiclass_accuracy(
+            val_output.argmax(1),
+            val_labels,
+            num_classes=val_output.size(1),
+        ).item()
 
-    return {k: round(meter.global_avg, 3) for k, meter in val_logger.meters.items()}
+        val_logger.update(val_loss=val_loss, val_accuracy=val_accuracy)
+
+    return {k: meter.global_avg for k, meter in val_logger.meters.items()}
 
 
 def train(
@@ -166,7 +183,7 @@ def train(
 
         val_metrics = validate(epoch, model, val_dataloader, criterion, device)
 
-        wandb.log({"epoch": epoch, **train_metrics, **val_metrics})
+        wandb.log({**train_metrics, **val_metrics})
 
         # Update the learning rate after warm-up
         if epoch + 1 > warmup_epochs:

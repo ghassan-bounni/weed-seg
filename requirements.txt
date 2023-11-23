@@ -11,3 +11,4 @@ opencv-python
 albumentations
 wandb
 python-dotenv
+torchmetrics
