@@ -1,9 +1,7 @@
 import os
 import cv2
 
-import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-
 from data.augmentations import create_transforms
 
 
@@ -56,10 +54,7 @@ class StemDetectionDataset(Dataset):
             image = transformed["image"]
             mask = transformed["mask"]
 
-        # convert mask to multi-channel binary mask
-        masks = F.one_hot(mask, self.num_classes).permute(2, 0, 1).byte()
-
-        return image, masks, img_path.split("/")[-1].split(".")[0]
+        return image, mask, img_path.split("/")[-1].split(".")[0]
 
 
 def create_dataloader(
