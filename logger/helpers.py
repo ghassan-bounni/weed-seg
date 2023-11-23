@@ -127,7 +127,7 @@ class MetricLogger(object):
                 header,
                 total_time_str,
                 total_time / n_iterations,
-                {k: round(meter.global_avg, 3) for k, meter in self.meters.items()},
+                {k: meter.global_avg for k, meter in self.meters.items()},
             )
         )
 
@@ -139,7 +139,7 @@ class SmoothedValue:
 
     def __init__(self, window_size=20, fmt=None):
         if fmt is None:
-            fmt = "{median:.4f} ({global_avg:.4f})"
+            fmt = "{median} ({global_avg})"
         self.deque = deque(maxlen=window_size)
         self.total = 0.0
         self.count = 0
