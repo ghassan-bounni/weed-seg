@@ -54,7 +54,7 @@ class StemDetectionDataset(Dataset):
             image = transformed["image"]
             mask = transformed["mask"]
 
-        return image, mask, img_path.split("/")[-1].split(".")[0]
+        return image, mask.long(), img_path.split("/")[-1].split(".")[0]
 
 
 def create_dataloader(

@@ -111,15 +111,15 @@ def load_criterion(loss_fn: str, **kwargs) -> nn.Module:
 def load_checkpoint(
     mode: str,
     model: nn.Module,
-    optimizer: optim.Optimizer = None,
-    checkpoint: str = None,
+    optimizer: optim.Optimizer | None = None,
+    ckpt_path: str | None = None,
 ):
     """
     Loads a selected checkpoint if it exists or checks for the latest checkpoint.\n
     If no checkpoint exists, starts from epoch 0.
     """
 
-    checkpoint_path = checkpoint or "checkpoints/checkpoint_latest.pth"
+    checkpoint_path = ckpt_path or "checkpoints/checkpoint_latest.pth"
 
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -133,8 +133,8 @@ def load_checkpoint(
         return epoch + 1
 
     else:
-        if checkpoint:
-            raise ValueError(f"Checkpoint: {checkpoint} not found.")
+        if ckpt_path:
+            raise ValueError(f"Checkpoint: {ckpt_path} not found.")
         else:
             logger.info("No checkpoint found. Starting from epoch 0.")
             return 0
@@ -159,25 +159,23 @@ def save_checkpoint(epoch, model_state, optimizer_state, save_interval):
 
 
 def get_stem_coordinates(
-    predictions: torch.Tensor, num_classes: int, img_ids: list
-) -> list:
-    stem_coordinates = []
+    predictions: torch.Tensor, num_classes: int, mask_ids: list
+) -> dict:
+    stem_coordinates = {}
 
     # getting stem coordinates per class for each image in the predictions tensor
-    for image_idx, image_argmax in enumerate(predictions):
-        image_id = img_ids[image_idx]
+    for mask_idx, mask in enumerate(predictions):
+        mask_id = mask_ids[mask_idx]
+        stem_coordinates[mask_id] = {}
 
         # skipping the background class (class_id = 0)
         for class_id in range(1, num_classes):
-            binary_mask = (image_argmax == class_id).cpu().numpy().astype(np.uint8)
+            binary_mask = (mask == class_id).cpu().numpy().astype(np.uint8)
             _, _, _, centroids = cv2.connectedComponentsWithStats(
                 binary_mask, connectivity=8
             )
-            stem_coordinates.append(
-                {
-                    "file_name": image_id,
-                    "stems": centroids[1:].tolist(),
-                }
+            stem_coordinates[mask_id][class_id] = (
+                centroids[1:].astype(np.uint8).tolist()
             )
 
     return stem_coordinates

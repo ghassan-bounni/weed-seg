@@ -21,8 +21,8 @@ def test(
     model_config: dict,
     test_config: dict,
     data_path: str,
-    checkpoint: str,
-    output_dir: str,
+    checkpoint_path: str,
+    output_path: str,
 ):
     """
     Evaluates the model.
@@ -30,7 +30,7 @@ def test(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger = logging.getLogger("StemDetectionLogger")
-    masks_dir = os.path.join(output_dir, "masks")
+    masks_dir = os.path.join(output_path, "masks")
     os.makedirs(masks_dir, exist_ok=True)
 
     (
@@ -51,19 +51,19 @@ def test(
     model = BaseModel(**model_config)
     model.to(device)
 
-    load_checkpoint("eval", model, checkpoint=checkpoint)
+    load_checkpoint("eval", model, ckpt_path=checkpoint_path)
     summary(model, input_size=(batch_size, *eval_dataloader.dataset[0][0].shape))
 
     model.eval()
     with torch.inference_mode():
         accuracy = 0
-        stem_data = {"results": []}
+        stem_data = {"results": {}}
         for batch_idx, (inputs, targets, img_ids) in enumerate(eval_dataloader):
             inputs, targets = inputs.to(device), targets.to(device)
 
             # forward pass
             logits = model(inputs)
-            output = F.softmax(logits, dim=1)
+            output = F.softmax(logits, dim=1).exp()
 
             # getting the class with the highest probability per pixel in each image
             output_argmax = output.argmax(1)
@@ -82,9 +82,9 @@ def test(
             stem_coordinates = get_stem_coordinates(
                 output_argmax, output.shape[1], img_ids
             )
-            stem_data["results"].extend(stem_coordinates)
+            stem_data["results"].update(stem_coordinates)
 
-        save_data_to_json(stem_data, "stem_data.json", output_dir)
+        save_data_to_json(stem_data, "stem_data.json", output_path)
 
         accuracy /= len(eval_dataloader)
         logger.info(f"Accuracy: {(accuracy * 100):.2f}%")

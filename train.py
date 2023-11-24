@@ -4,7 +4,7 @@ import wandb
 
 import torch
 import torch.nn.functional as F
-from torch.nn.utils import clip_grad_norm_
+from torch.nn.utils.clip_grad import clip_grad_norm
 import torchmetrics.functional.classification as metrics
 from torch.optim.lr_scheduler import PolynomialLR, StepLR
 from torchinfo import summary
@@ -46,7 +46,7 @@ def train_one_epoch(
 
         logits = model(inputs)
         loss = criterion(logits, labels)
-        output = F.softmax(logits, dim=1)
+        output = F.softmax(logits, dim=1).exp()
 
         accuracy = metrics.multiclass_accuracy(
             output.argmax(1), labels, num_classes=output.size(1)
@@ -62,7 +62,7 @@ def train_one_epoch(
         loss.backward()
 
         if clip_grad is not None:
-            clip_grad_norm_(model.parameters(), clip_grad)
+            clip_grad_norm(model.parameters(), clip_grad)
 
         optimizer.step()
 
@@ -84,7 +84,7 @@ def validate(epoch, model, val_dataloader, criterion, device):
         with torch.no_grad():
             val_logits = model(val_inputs)
             val_loss = criterion(val_logits, val_labels)
-            val_output = F.softmax(val_logits, dim=1)
+            val_output = F.softmax(val_logits, dim=1).exp()
 
         val_accuracy = metrics.multiclass_accuracy(
             val_output.argmax(1),
@@ -104,7 +104,7 @@ def train(
     data_path: str,
     save_interval: int,
     seed: int,
-    checkpoint_name: str = None,
+    checkpoint_path: str = None,
 ) -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -157,7 +157,7 @@ def train(
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
     criterion = load_criterion(loss_fn)
 
-    start_epoch = load_checkpoint("train", model, optimizer, checkpoint_name)
+    start_epoch = load_checkpoint("train", model, optimizer, checkpoint_path)
     summary(model, input_size=(batch_size, *train_dataloader.dataset[0][0].shape))
 
     scheduler = (
