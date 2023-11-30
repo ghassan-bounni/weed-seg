@@ -5,8 +5,7 @@ import wandb
 import torch
 import torch.nn.functional as F
 from torch.nn.utils.clip_grad import clip_grad_norm
-import torchmetrics.functional.classification as metrics
-from torch.optim.lr_scheduler import PolynomialLR, StepLR
+from torch.optim.lr_scheduler import PolynomialLR, StepLR, ExponentialLR
 from torchinfo import summary
 
 from logger import MetricLogger
@@ -160,11 +159,12 @@ def train(
     start_epoch = load_checkpoint("train", model, optimizer, checkpoint_path)
     summary(model, input_size=(batch_size, *train_dataloader.dataset[0][0].shape))
 
-    scheduler = (
-        PolynomialLR(optimizer, total_iters=epochs, power=lr_power)
-        if (lr_scheduler == "poly")
-        else StepLR(optimizer, step_size=lr_step, gamma=lr_gamma)
-    )
+    if lr_scheduler == "poly":
+        scheduler = PolynomialLR(optimizer, total_iters=epochs, power=lr_power)
+    elif lr_scheduler == "exp":
+        scheduler = ExponentialLR(optimizer, gamma=lr_gamma)
+    else:
+        scheduler = StepLR(optimizer, step_size=lr_step, gamma=lr_gamma)
 
     wandb.watch(model, criterion, log="all", log_freq=10)
 
