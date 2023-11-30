@@ -3,7 +3,6 @@ import os
 import wandb
 
 import torch
-import torch.nn.functional as F
 from torch.nn.utils.clip_grad import clip_grad_norm
 from torch.optim.lr_scheduler import PolynomialLR, StepLR, ExponentialLR
 from torchinfo import summary
@@ -12,7 +11,13 @@ from logger import MetricLogger
 from models.base import BaseModel
 from data.dataset import create_dataloader
 
-from utils.utils import load_criterion, load_checkpoint, save_checkpoint
+from utils.utils import (
+    load_criterion,
+    load_checkpoint,
+    save_checkpoint,
+    calculate_grad_norm,
+    calculate_metrics,
+)
 
 
 def train_one_epoch(
@@ -45,17 +50,6 @@ def train_one_epoch(
 
         logits = model(inputs)
         loss = criterion(logits, labels)
-        output = F.softmax(logits, dim=1).exp()
-
-        accuracy = metrics.multiclass_accuracy(
-            output.argmax(1), labels, num_classes=output.size(1)
-        )
-
-        train_logger.update(
-            lr=optimizer.param_groups[0]["lr"],
-            loss=loss.item(),
-            accuracy=accuracy.item(),
-        )
 
         optimizer.zero_grad()
         loss.backward()
@@ -64,6 +58,18 @@ def train_one_epoch(
             clip_grad_norm(model.parameters(), clip_grad)
 
         optimizer.step()
+
+        total_norm, avg_norm = calculate_grad_norm(model)
+        accuracy, iou = calculate_metrics(logits, labels)
+
+        train_logger.update(
+            lr=optimizer.param_groups[0]["lr"],
+            loss=loss.item(),
+            accuracy=accuracy,
+            iou=iou,
+            total_norm=total_norm,
+            avg_norm=avg_norm,
+        )
 
     return {k: meter.global_avg for k, meter in train_logger.meters.items()}
 
@@ -83,15 +89,10 @@ def validate(epoch, model, val_dataloader, criterion, device):
         with torch.no_grad():
             val_logits = model(val_inputs)
             val_loss = criterion(val_logits, val_labels)
-            val_output = F.softmax(val_logits, dim=1).exp()
 
-        val_accuracy = metrics.multiclass_accuracy(
-            val_output.argmax(1),
-            val_labels,
-            num_classes=val_output.size(1),
-        ).item()
+        val_accuracy, val_iou = calculate_metrics(val_logits, val_labels)
 
-        val_logger.update(val_loss=val_loss, val_accuracy=val_accuracy)
+        val_logger.update(val_loss=val_loss, val_accuracy=val_accuracy, val_iou=val_iou)
 
     return {k: meter.global_avg for k, meter in val_logger.meters.items()}
 

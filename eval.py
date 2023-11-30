@@ -3,7 +3,6 @@ import os
 import cv2
 import torch
 import torch.nn.functional as F
-import torchmetrics.functional.classification as metrics
 from torchinfo import summary
 
 from models.base import BaseModel
@@ -14,6 +13,7 @@ from utils.utils import (
     load_checkpoint,
     get_stem_coordinates,
     save_data_to_json,
+    calculate_metrics,
 )
 
 
@@ -56,22 +56,22 @@ def test(
 
     model.eval()
     with torch.inference_mode():
-        accuracy = 0
+        metrics = {"accuracy": 0, "iou": 0}
         stem_data = {"results": {}}
         for batch_idx, (inputs, targets, img_ids) in enumerate(eval_dataloader):
             inputs, targets = inputs.to(device), targets.to(device)
 
             # forward pass
             logits = model(inputs)
-            output = F.softmax(logits, dim=1).exp()
+            output = F.softmax(logits, dim=1)
 
             # getting the class with the highest probability per pixel in each image
             output_argmax = output.argmax(1)
 
-            # calculating the accuracy
-            accuracy += metrics.multiclass_accuracy(
-                output_argmax, targets, num_classes=output.shape[1]
-            ).item()
+            # calculating the accuracy and IoU
+            accuracy, iou = calculate_metrics(logits, targets)
+            metrics["accuracy"] += accuracy
+            metrics["iou"] += iou
 
             # saving the masks
             for img_id, img in zip(img_ids, output_argmax):
@@ -86,5 +86,8 @@ def test(
 
         save_data_to_json(stem_data, "stem_data.json", output_path)
 
-        accuracy /= len(eval_dataloader)
-        logger.info(f"Accuracy: {(accuracy * 100):.2f}%")
+        metrics["accuracy"] /= len(eval_dataloader)
+        metrics["iou"] /= len(eval_dataloader)
+        logger.info(
+            f"Accuracy: {(metrics['accuracy'] * 100):.2f}%, IoU: {metrics['iou']:.2f}%"
+        )

@@ -12,6 +12,7 @@ from importlib import import_module
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torchmetrics.functional.classification as metrics
 import pytorch_toolbelt.losses
 
 logger = logging.getLogger("StemDetectionLogger")
@@ -196,6 +197,32 @@ def save_data_to_json(data, file_name: str, output_dir: str):
 
     with open(os.path.join(output_dir, file_name), "w") as f:
         json.dump(data, f)
+
+
+def calculate_metrics(logits, labels):
+    output = logits.softmax(1)
+
+    accuracy = metrics.multiclass_accuracy(
+        output.argmax(1), labels, num_classes=output.size(1)
+    ).item()
+
+    iou = metrics.multiclass_jaccard_index(
+        output.argmax(1), labels, num_classes=output.size(1)
+    ).item()
+
+    return accuracy, iou
+
+
+def calculate_grad_norm(model: nn.Module) -> tuple[float, float]:
+    total_norm = 0
+    parameters = [
+        p for p in model.parameters() if p.grad is not None and p.requires_grad
+    ]
+    for p in parameters:
+        param_norm = p.grad.detach().data.norm(2)
+        total_norm += param_norm.item() ** 2
+    total_norm = total_norm**0.5
+    return total_norm, total_norm / len(parameters)
 
 
 # TODO: utility functions and classes from ultralytics
