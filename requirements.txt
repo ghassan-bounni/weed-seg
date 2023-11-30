@@ -12,3 +12,4 @@ albumentations
 wandb
 python-dotenv
 torchmetrics
+pytorch-toolbelt

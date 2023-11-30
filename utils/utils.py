@@ -12,6 +12,7 @@ from importlib import import_module
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import pytorch_toolbelt.losses
 
 logger = logging.getLogger("StemDetectionLogger")
 
@@ -99,13 +100,17 @@ def load_criterion(loss_fn: str, **kwargs) -> nn.Module:
     """
 
     if hasattr(nn, loss_fn):
-        return getattr(nn, loss_fn)()
-    else:
-        loss_module = import_module("utils.loss")
-        if hasattr(loss_module, loss_fn):
-            return getattr(loss_module, loss_fn)(**kwargs)
-        else:
-            raise ValueError(f"{loss_fn} is not found in torch.nn or utils.loss")
+        return getattr(nn, loss_fn)(**kwargs)
+    if hasattr(pytorch_toolbelt.losses, loss_fn):
+        return getattr(pytorch_toolbelt.losses, loss_fn)(**kwargs)
+
+    loss_module = import_module("utils.loss")
+    if hasattr(loss_module, loss_fn):
+        return getattr(loss_module, loss_fn)(**kwargs)
+
+    raise ValueError(
+        f"{loss_fn} is not found in torch.nn or utils.loss or pytorch-toolbelt.losses"
+    )
 
 
 def load_checkpoint(

@@ -149,7 +149,10 @@ train:
   lr_power: 1.0
   lr_scheduler: "poly"
   clip_grad: null
-  loss_fn: "JaccardLoss"
+  loss_fn:
+    name: "JaccardLoss"
+    params:
+      mode: "multiclass"
   transforms:
     - Resize:
         height: 290
@@ -194,8 +197,10 @@ eval:
     ## Add more transforms here
 
 ```
-For more information on the available transform options, please refer to the [Albumentations documentation](https://albumentations.ai/docs/api_reference/full_reference/).
-
+- For more information on the available transform options, please refer to the [Albumentations 
+documentation](https://albumentations.ai/docs/api_reference/full_reference/).
+- Losses can be found in the `utils/losses.py` file, or directly from `Torch.nn` or 
+  `pytorch-toolbelt.losses`.
 ## Usage
 
 ### Training

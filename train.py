@@ -155,7 +155,7 @@ def train(
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
-    criterion = load_criterion(loss_fn)
+    criterion = load_criterion(loss_fn["name"], **loss_fn["params"])
 
     start_epoch = load_checkpoint("train", model, optimizer, checkpoint_path)
     summary(model, input_size=(batch_size, *train_dataloader.dataset[0][0].shape))
